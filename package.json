@@ -1,0 +1,47 @@
+{
+  "name": "yukino",
+  "version": "1.0.0-dev",
+  "description": "Kawaii client written in TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "clean": "rimraf dist",
+    "prepare": "npm run build",
+    "lint": "eslint src --ext .ts",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "lavalink",
+    "client",
+    "music",
+    "discord",
+    "typescript"
+  ],
+  "author": "Sanchit-Codes",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.8.0",
+    "@types/ws": "^8.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@discordjs/collection": "^2.1.1",
+    "@discordjs/voice": "^0.18.0",
+    "discord.js": "^14.18.0",
+    "ws": "^8.18.1"
+  }
+}

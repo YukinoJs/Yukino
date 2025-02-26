@@ -1,0 +1,48 @@
+server:
+  port: 1092
+  address: 127.0.0.1
+lavalink:
+  server:
+    password: "root"
+    sources:
+      youtube: true
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: true
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    # plugins:
+    #   youtube:
+    #     enabled: true # Whether this source can be used.
+    #     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
+    #     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
+    #     allowDirectPlaylistIds: true # Whether just playlist IDs can match. If false, only complete URLs will be loaded.
+    #     clients:
+    #       - MUSIC
+    #       - ANDROID_VR
+    #       - WEB
+    #       - WEBEMBEDDED 
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+sentry:
+  dsn: ""
+  environment: ""
+logging:
+  file:
+    max-history: 30
+    max-size: 1GB
+  path: ./logs/
+
+  level:
+    root: INFO
+    lavalink: INFO
