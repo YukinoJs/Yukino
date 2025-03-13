@@ -1,18 +1,15 @@
-// Core Components
+// Export all components
 export { Connector } from './lib/connectors/Connector';
-export { Node } from './lib/node/Node';
-export { Player } from './lib/node/Player';
-export { Queue } from './lib/node/Queue';
-export { Rest } from './lib/node/Rest';
+export { Node } from './structures/Node';
+export { Player } from './structures/Player';
+export { Queue } from './structures/Queue';
+export { Rest } from './structures/Rest';
 
-// Plugin System
-export { BasePlugin } from './lib/plugins/BasePlugin';
-export { PluginManager } from './lib/plugins/PluginManager';
+// Export constants
+export { Events, LoadTypes, State, PlayerStates } from './types/constants';
 
-// Types & Constants
-export * from './types';
-export * from './constants';
+// Export utilities
+export * from './utils/Utils';
 
-// Version - import from constants
-import { VERSION } from './constants';
-export const version = VERSION;
+// Export types
+export * from './types/interfaces';
