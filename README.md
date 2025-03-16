@@ -1,111 +1,26 @@
-# Yukino - A Lavalink Client in TypeScript
+# Yukino - A TypeScript Lavalink Client
 
-Yukino is a powerful and flexible Lavalink client written in TypeScript. It provides a comprehensive set of features for interacting with Lavalink, including node management, player control, track loading, and more.
+A powerful and flexible Lavalink v4 client written in TypeScript, designed for Discord music bots.
 
 ## Features
 
-- Node management with automatic reconnection
-- Player control with support for filters and effects
-- Track loading from URLs and search queries
-- Queue management with looping and shuffling
-- Plugin system for extending functionality
-- Comprehensive event handling
+- Full Lavalink v4 API support
+- Advanced queue management with looping and shuffling
+- Extensive filter support (equalizer, karaoke, timescale, etc.)
+- Automatic reconnection handling
+- Voice state tracking and error recovery
+- Comprehensive event system
+- Support for search and playlist loading
+- Built-in logging system with debug mode
+- Type-safe with full TypeScript support
 
 ## Installation
-
-To install Yukino, use npm:
 
 ```bash
 npm install yukino
 ```
 
-## Usage
-
-### Basic Example
-
-Here's a basic example of how to use Yukino to connect to a Lavalink server and play a track:
-
-```typescript
-import { Connector } from 'yukino';
-import { Events, LoadTypes } from 'yukino/constants';
-
-const connector = new Connector({
-    name: 'Main',
-    url: 'localhost:2333',
-    auth: 'youshallnotpass',
-    secure: false,
-});
-
-const player = connector.createPlayer({
-    guildId: '123456789',
-    voiceChannelId: '987654321',
-    textChannelId: '987654321',
-    selfDeaf: true,
-    volume: 100,
-});
-
-connector.on(Events.NODE_READY, (node) => {
-    console.log(`Node ${node.options.name} is ready!`);
-});
-
-player.on(Events.TRACK_START, (player, track) => {
-    console.log('Now playing:', track.info.title);
-});
-
-async function playTrack() {
-    const result = await connector.loadTrack('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    if (result.loadType === LoadTypes.TRACK_LOADED) {
-        await player.play(result.tracks[0]);
-        console.log('Started playing:', result.tracks[0].info.title);
-    }
-}
-
-playTrack().catch(console.error);
-```
-
-### Setting up with Discord.js
-
-Yukino can be easily integrated with Discord.js in two ways:
-
-#### Method 1: Using the setup helper
-
-```typescript
-import { Client, GatewayIntentBits } from 'discord.js';
-import { setupYukino } from 'yukino';
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
-  ],
-});
-
-client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
-  
-  // Setup Yukino with the helper function
-  setupYukino(
-    client,
-    {
-      host: 'localhost', 
-      port: 2333,
-      auth: 'youshallnotpass',
-      secure: false,
-      version: 'v4',
-    },
-    {
-      name: 'MainNode',
-      url: 'localhost:2333',
-      auth: 'youshallnotpass',
-    }
-  );
-  
-  // Connect to Lavalink
-  client.yukino.connect();
-});
-```
-
-#### Method 2: Direct instantiation
+## Quick Start
 
 ```typescript
 import { Client, GatewayIntentBits } from 'discord.js';
@@ -115,83 +30,133 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
-  ],
+  ]
 });
 
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
-  
-  // Create and attach Yukino directly
-  client.yukino = new YukinoClient(
+  // Initialize Yukino
+  const yukino = new YukinoClient(client, {
     client,
-    {
-      host: 'localhost', 
-      port: 2333,
-      auth: 'youshallnotpass',
-      secure: false,
-      version: 'v4',
-    },
-    {
-      name: 'MainNode',
-      url: 'localhost:2333',
-      auth: 'youshallnotpass',
-    }
-  );
-  
+    host: 'localhost',
+    port: 2333,
+    auth: 'youshallnotpass',
+    version: 'v4'
+  }, {
+    name: 'MainNode',
+    url: 'localhost:2333',
+    auth: 'youshallnotpass'
+  });
+
   // Connect to Lavalink
-  client.yukino.connect();
+  yukino.connect();
 });
+
+client.login('your-token-here');
 ```
+
+## Basic Usage
 
 ### Playing Music
 
-Once Yukino is set up, you can use it to play music:
-
 ```typescript
-// Creating a player
-const player = client.yukino.createPlayer({
+// Create a player for a guild
+const player = yukino.createPlayer({
   guildId: 'your-guild-id',
   voiceChannelId: 'voice-channel-id',
-  textChannelId: 'text-channel-id',
+  textChannelId: 'text-channel-id'
 });
 
-// Connect the player to voice
+// Connect to voice channel
 await player.connect();
 
-// Search and play music
-const result = await client.yukino.loadTrack('your search query');
+// Load and play a track
+const result = await yukino.loadTrack('your search query or URL');
 if (result.loadType === 'TRACK_LOADED') {
   await player.play({ track: result.data[0] });
 }
 ```
 
-### Managing Players and Queues
-
-You can easily access and manage players and queues:
+### Using Filters
 
 ```typescript
-// Get a player for a specific guild
-const player = client.yukino.getPlayer('guild-id');
+// Apply bass boost
+await player.setEqualizer(FilterUtil.createBassBoostEQ(0.5));
 
-// Get the queue for a guild
-const queue = client.yukino.getQueue('guild-id');
+// Apply nightcore effect
+await player.setTimescale(FilterUtil.nightcorePreset().timescale);
 
-// Check all active players
-const activePlayers = client.yukino.players;
+// Apply 8D audio
+await player.setRotation(FilterUtil.eightDimensionalPreset().rotation);
+
+// Clear all filters
+await player.clearFilters();
 ```
 
-### Advanced Example
+### Queue Management
 
-For more advanced usage, including queue management and custom plugins, see the [examples](examples) directory.
+```typescript
+// Add tracks to queue
+player.queue.add(track);
+
+// Skip current track
+await player.skip();
+
+// Toggle repeat modes
+player.setTrackLoop(true); // Repeat current track
+player.setQueueLoop(true); // Repeat entire queue
+```
+
+## Events
+
+```typescript
+yukino.node.on('nodeReady', () => {
+  console.log('Connected to Lavalink!');
+});
+
+yukino.node.on('trackStart', (player, track) => {
+  console.log(`Now playing: ${track.info.title}`);
+});
+
+yukino.node.on('trackEnd', (player, track, reason) => {
+  console.log(`Track ended: ${track.info.title}`);
+});
+```
+
+## Advanced Configuration
+
+### Debug Mode
+
+Enable debug logging for detailed information:
+
+```typescript
+const yukino = new YukinoClient(client, {
+  ...options,
+  debug: true
+});
+```
+
+### Custom Voice State Handling
+
+```typescript
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  const player = yukino.getPlayer(oldState.guild.id);
+  if (player && !newState.channelId) {
+    // Handle disconnections
+    await player.destroy();
+  }
+});
+```
 
 ## Documentation
 
-For detailed documentation, see the [docs](docs) directory.
+For more detailed documentation and examples, check out:
+- [Example Bot Implementation](examples/simple-discord-bot.ts)
+- [API Documentation](docs/)
 
 ## Contributing
 
-Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
