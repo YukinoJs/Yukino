@@ -44,7 +44,7 @@ client.once("ready", async () => {
     auth: process.env.LAVALINK_PASSWORD || "root",
     secure: false,
     version: "v4",
-    debug: true, // Enable debug logging for voice state tracking
+    debug: false, // Enable debug logging for voice state tracking
   };
 
   const nodeOptions = {
