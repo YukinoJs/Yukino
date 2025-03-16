@@ -11,6 +11,7 @@ export interface ConnectorOptions {
   auth: string;
   secure?: boolean;
   version?: string;
+  sessionId?: string;
   debug?: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface NodeOptions {
   resumeKey?: string | null;
   resumeTimeout?: number;
   version?: string;
+  debug?: boolean;
 }
 
 export interface YukinoOptions {
@@ -113,6 +115,7 @@ export interface RestOptions {
   secure?: boolean;
   timeout?: number;
   version?: string;
+  debug?: boolean;
 }
 
 export interface NodeStats {

@@ -12,7 +12,12 @@ import {
 } from "../types/interfaces";
 import { Events, State, PlayerStates, Versions } from "../types/constants";
 import { wait } from "../utils/Utils";
+import { Logger } from "../utils/Logger";
 
+/**
+ * Represents a connection to a Lavalink node
+ * @extends EventEmitter
+ */
 export class Node extends EventEmitter {
   public connector: Connector;
   public options: Required<NodeOptions>;
@@ -29,9 +34,12 @@ export class Node extends EventEmitter {
   public info: any | null;
   public sessionId: string | null;
   public reconnectTimeout?: NodeJS.Timeout;
+  private _logger: Logger;
 
   /**
    * Creates a new node instance
+   * @param {Connector} connector - Parent connector
+   * @param {NodeOptions} options - Node configuration
    */
   constructor(connector: Connector, options: NodeOptions) {
     super();
@@ -40,6 +48,7 @@ export class Node extends EventEmitter {
     this.name = options.name;
     this.group = options.group || "default";
     this.auth = options.auth;
+    this._logger = Logger.create('Node', options.debug || false);
     
     this.options = {
       secure: false,
@@ -49,6 +58,7 @@ export class Node extends EventEmitter {
       resumeKey: null,
       resumeTimeout: 60,
       version: Versions.WEBSOCKET_VERSION,
+      debug: options.debug || false,
       ...options,
     };
 
@@ -61,6 +71,7 @@ export class Node extends EventEmitter {
       auth: options.auth,
       secure: options.secure || false,
       version: options.version || Versions.REST_VERSION,
+      debug: options.debug || false,
     });
 
     this.ws = null;
@@ -70,10 +81,13 @@ export class Node extends EventEmitter {
     this.info = null;
     this.sessionId = null;
     this.players = new Map();
+    
+    this._logger.debug(`Node created: ${this.name}, URL: ${this.url}`);
   }
 
   /**
-   * Calculate penalties for load balancing
+   * Calculates load penalties for balancing
+   * @returns {number} The calculated penalty score
    */
   public get penalties(): number {
     if (!this.stats) return 0;
@@ -92,14 +106,16 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Check if the node is connected
+   * Checks if the WebSocket connection is open
+   * @returns {boolean} Connection status
    */
   public get connected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
   /**
-   * Connect to the Lavalink node
+   * Connects to the Lavalink node
+   * @returns {Promise<void>}
    */
   public async connect(): Promise<void> {
     if (this.connected) return;
@@ -128,6 +144,9 @@ export class Node extends EventEmitter {
 
   /**
    * Waits for connection to establish
+   * @param {number} timeout - Connection timeout in ms
+   * @returns {Promise<void>}
+   * @private
    */
   private async waitForConnection(timeout = 30000): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -155,21 +174,23 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Send data to the Lavalink node
+   * Sends data to the Lavalink node
+   * @param {any} data - Data to send
+   * @returns {Promise<void>}
+   * @throws {Error} If node is not connected
    */
   public async send(data: any): Promise<void> {
     if (!this.connected) throw new Error("Node is not connected");
     
-    console.log(`[Node] Sending payload to Lavalink:`, data);
     
     return new Promise<void>((resolve, reject) => {
       const payload = JSON.stringify(data);
       this.ws?.send(payload, (error) => {
         if (error) {
-          console.error(`[Node] Error sending payload:`, error);
+          this._logger.error(`Error sending payload:`, error);
           reject(error);
         } else {
-          console.log(`[Node] Payload sent successfully`);
+          this._logger.debug(`Payload sent successfully`);
           resolve();
         }
       });
@@ -177,7 +198,9 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Create a new player
+   * Creates a new player for a guild
+   * @param {PlayerOptions} options - Player options
+   * @returns {Player} New or existing player
    */
   public createPlayer(options: PlayerOptions): Player {
     const existing = this.players.get(options.guildId);
@@ -191,7 +214,9 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Load tracks from a query
+   * Loads tracks from a query
+   * @param {string} query - URL or search term
+   * @returns {Promise<LoadTrackResponse>} Track load result
    */
   public async loadTracks(query: string): Promise<LoadTrackResponse> {
     const response = await this.rest.loadTracks(query);
@@ -201,15 +226,15 @@ export class Node extends EventEmitter {
   }
   
   /**
-   * Process events from a REST API response
-   * @param response The response from a REST API call that might contain events
+   * Processes events from REST responses
+   * @param {any} response - REST response data
    */
   public processEventsFromResponse(response: any): void {
     if (!response) return;
     
     // Check if the response contains events to process
     if (response.events && Array.isArray(response.events) && response.events.length > 0) {
-      console.log(`[Node] Processing ${response.events.length} events from REST response`);
+      this._logger.debug(`Processing ${response.events.length} events from REST response`);
       
       for (const event of response.events) {
         if (event.type && event.guildId) {
@@ -223,10 +248,12 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Execute a REST API call to a player endpoint and process any returned events
-   * @param guildId The guild ID
-   * @param method The HTTP method
-   * @param body The request body
+   * Executes a REST API call to a player endpoint
+   * @param {string} guildId - Guild ID
+   * @param {string} method - HTTP method
+   * @param {any} [body] - Request body
+   * @returns {Promise<any>} API response
+   * @throws {Error} If no session ID is available
    */
   public async callPlayerAPI(guildId: string, method = 'PATCH', body?: any): Promise<any> {
     if (!this.sessionId) throw new Error('No session ID available');
@@ -241,7 +268,9 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Disconnect from the Lavalink node
+   * Disconnects from the Lavalink node
+   * @param {number} [code=1000] - WebSocket close code
+   * @param {string} [reason="Disconnecting"] - Close reason
    */
   public disconnect(code = 1000, reason = "Disconnecting"): void {
     if (!this.connected) return;
@@ -270,7 +299,8 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle voice state updates
+   * Handles voice state updates from Discord
+   * @param {any} data - Voice state data
    */
   public handleVoiceStateUpdate(data: any): void {
     const player = this.players.get(data.guild_id);
@@ -290,7 +320,8 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle voice server updates
+   * Handles voice server updates from Discord
+   * @param {any} data - Voice server data
    */
   public handleVoiceServerUpdate(data: any): void {
     const player = this.players.get(data.guild_id);
@@ -305,7 +336,9 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Update voice state for a guild
+   * Updates voice state for a guild
+   * @param {string} guildId - Guild ID
+   * @private
    */
   private updateVoiceState(guildId: string): void {
     const player = this.players.get(guildId);
@@ -333,7 +366,8 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * WebSocket open handler
+   * WebSocket open event handler
+   * @private
    */
   private onOpen(): void {
     this.state = State.CONNECTED;
@@ -350,7 +384,9 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * WebSocket message handler - For Lavalink v4, WebSocket is only used for events
+   * WebSocket message handler
+   * @param {WebSocket.Data} data - Received data
+   * @private
    */
   private onMessage(data: WebSocket.Data): void {
     try {
@@ -391,18 +427,17 @@ export class Node extends EventEmitter {
     
       this.emit(Events.NODE_EVENT, this, payload);
     } catch (error) {
-      console.error(`[Node] Error processing message:`, error);
+      this._logger.error(`Error processing message:`, error);
       this.emit(Events.NODE_ERROR, this, error);
     }
   }
 
   /**
-   * Handle Lavalink events from WebSocket or REST responses
-   * @param player The player instance
-   * @param data The event data
+   * Handles Lavalink events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
    */
   public handleEventDispatch(player: Player, data: LavalinkEvent): void {
-    console.log(`[Node] Handling Lavalink event: ${data.type} for guild ${data.guildId} (source: ${data.source || 'unknown'})`);
 
     switch (data.type) {
       case "TrackStartEvent":
@@ -432,14 +467,20 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle track start event
+   * Handles track start events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
+   * @private
    */
   private trackStart(player: Player, data: LavalinkEvent): void {
     this.emit(Events.TRACK_START, player, data.track);
   }
 
   /**
-   * Handle track end event
+   * Handles track end events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
+   * @private
    */
   private trackEnd(player: Player, data: LavalinkEvent): void {
     this.emit(Events.TRACK_END, player, data.track, data.reason);
@@ -475,7 +516,10 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle track exception event
+   * Handles track exception events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
+   * @private
    */
   private trackException(player: Player, data: LavalinkEvent): void {
     this.emit(Events.TRACK_ERROR, player, data.track, data.exception);
@@ -487,7 +531,10 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle track stuck event
+   * Handles track stuck events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
+   * @private
    */
   private trackStuck(player: Player, data: LavalinkEvent): void {
     this.emit(Events.TRACK_STUCK, player, data.track, data.thresholdMs);
@@ -499,10 +546,12 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle WebSocket closed event
+   * Handles WebSocket closed events
+   * @param {Player} player - Target player
+   * @param {LavalinkEvent} data - Event data
+   * @private
    */
   private socketClosed(player: Player, data: LavalinkEvent): void {
-    console.log(data.code, data.reason, data.byRemote);
     this.emit(Events.WS_CLOSED, player, data.code, data.reason, data.byRemote);
 
     // Attempt to reconnect if the connection was closed unexpectedly
@@ -513,6 +562,8 @@ export class Node extends EventEmitter {
 
   /**
    * WebSocket error handler
+   * @param {Error} error - Error object
+   * @private
    */
   private onError(error: Error): void {
     this.emit(Events.NODE_ERROR, this, error);
@@ -524,6 +575,9 @@ export class Node extends EventEmitter {
 
   /**
    * WebSocket close handler
+   * @param {number} code - Close code
+   * @param {string} reason - Close reason
+   * @private
    */
   private onClose(code: number, reason: string): void {
     this.ws = null;
@@ -536,7 +590,8 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Schedule a reconnection attempt
+   * Schedules a reconnection attempt
+   * @private
    */
   private scheduleReconnect(): void {
     this.reconnectAttempts++;

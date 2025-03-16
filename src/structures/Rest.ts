@@ -2,20 +2,24 @@ import { LoadTrackResponse, RestOptions } from '../types/interfaces';
 import { LoadTypes } from '../types/constants';
 import { isValidURL } from '../utils/Utils';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { Logger } from '../utils/Logger';
 
 export class Rest {
   public options: Required<RestOptions>;
   private axios: AxiosInstance;
+  private _logger: Logger;
   
   constructor(options: RestOptions) {
     this.options = {
       secure: false,
       timeout: 15000,
       version: '4',
+      debug: false,
       ...options
     };
     
     const baseURL = `${this.options.secure ? 'https' : 'http'}://${this.options.url}`;
+    this._logger = Logger.create('Rest', this.options.debug);
     
     this.axios = axios.create({
       baseURL,
@@ -25,6 +29,8 @@ export class Rest {
         'Content-Type': 'application/json'
       }
     });
+    
+    this._logger.debug(`REST client initialized with baseURL: ${baseURL}`);
   }
 
   /**
@@ -32,7 +38,7 @@ export class Rest {
    */
   public async get<T>(url: string): Promise<T> {
     try {
-      console.log(`[Rest] GET ${url}`);
+      this._logger.debug(`GET ${url}`);
       const response = await this.axios.get<T>(url);
       return response.data;
     } catch (error: any) {
@@ -46,7 +52,7 @@ export class Rest {
    */
   public async post<T>(url: string, data?: any): Promise<T> {
     try {
-      console.log(`[Rest] POST ${url}`, data || '');
+      this._logger.debug(`POST ${url}`, data || '');
       const response = await this.axios.post<T>(url, data);
       return response.data;
     } catch (error: any) {
@@ -60,7 +66,7 @@ export class Rest {
    */
   public async patch<T>(url: string, data?: any): Promise<T> {
     try {
-      console.log(`[Rest] PATCH ${url}`, data || '');
+      this._logger.debug(`PATCH ${url}`, data || '');
       const response = await this.axios.patch<T>(url, data);
       return response.data;
     } catch (error: any) {
@@ -74,7 +80,7 @@ export class Rest {
    */
   public async delete<T>(url: string): Promise<T> {
     try {
-      console.log(`[Rest] DELETE ${url}`);
+      this._logger.debug(`DELETE ${url}`);
       const response = await this.axios.delete<T>(url);
       return response.data;
     } catch (error: any) {
@@ -88,7 +94,7 @@ export class Rest {
    */
   public async request<T>(endpoint: string, method = 'GET', body?: Record<string, any>): Promise<T> {
     try {
-      console.log(`[Rest] ${method} ${endpoint}`, body || '');
+      this._logger.debug(`${method} ${endpoint}`, body || '');
       
       const config: AxiosRequestConfig = { 
         method,
@@ -109,8 +115,8 @@ export class Rest {
    * Handle axios errors consistently
    */
   private handleError(error: any): void {
-    console.error(
-      '[Rest] Request failed:', 
+    this._logger.error(
+      'Request failed:', 
       error.response?.data || error.message,
       '\nStatus:', error.response?.status || 'Unknown'
     );
@@ -127,8 +133,12 @@ export class Rest {
     if (!isValidURL(search)) search = `ytsearch:${search}`;
 
     try {
-      return await this.get<LoadTrackResponse>(`/v4/loadtracks?identifier=${encodeURIComponent(search)}`);
+      this._logger.debug(`Loading tracks: ${search}`);
+      const response = await this.get<LoadTrackResponse>(`/v4/loadtracks?identifier=${encodeURIComponent(search)}`);
+      this._logger.debug(`Track load result type: ${response?.loadType}, items: ${response?.data?.length || 0}`);
+      return response;
     } catch (error) {
+      this._logger.error(`Error loading tracks for "${search}":`, error);
       return {
         loadType: LoadTypes.LOAD_FAILED,
         data: null,
@@ -144,6 +154,7 @@ export class Rest {
    * Decode a track
    */
   public async decodeTrack(encodedTrack: string): Promise<Record<string, any>> {
+    this._logger.debug(`Decoding track: ${encodedTrack.substring(0, 20)}...`);
     return this.get<Record<string, any>>(`/v4/decodetrack?encodedTrack=${encodedTrack}`);
   }
 
@@ -151,6 +162,7 @@ export class Rest {
    * Encode track info to a Base64 string
    */
   public async encodeTrack(track: Record<string, any>): Promise<string> {
+    this._logger.debug(`Encoding track: ${track.info?.title || 'Unknown'}`);
     const response = await this.post<{ track: string }>('/v4/encodetrack', track);
     return response.track;
   }
@@ -159,6 +171,7 @@ export class Rest {
    * Get Lavalink server version
    */
   public async version(): Promise<string> {
+    this._logger.debug(`Getting Lavalink version`);
     return this.get<string>('/version');
   }
 
@@ -166,6 +179,7 @@ export class Rest {
    * Get Lavalink server information
    */
   public async info(): Promise<Record<string, any>> {
+    this._logger.debug(`Getting Lavalink server info`);
     return this.get<Record<string, any>>('/v4/info');
   }
 
@@ -173,6 +187,7 @@ export class Rest {
    * Get Lavalink server statistics
    */
   public async stats(): Promise<Record<string, any>> {
+    this._logger.debug(`Getting Lavalink server stats`);
     return this.get<Record<string, any>>('/v4/stats');
   }
 
@@ -180,6 +195,7 @@ export class Rest {
    * Get all active sessions
    */
   public async getSessions(): Promise<any[]> {
+    this._logger.debug(`Getting all sessions`);
     return this.get<any[]>('/v4/sessions');
   }
 
@@ -187,6 +203,7 @@ export class Rest {
    * Get specific session information
    */
   public async getSession(sessionId: string): Promise<any> {
+    this._logger.debug(`Getting session: ${sessionId}`);
     return this.get<any>(`/v4/sessions/${sessionId}`);
   }
 
@@ -197,6 +214,7 @@ export class Rest {
    * @param data The update data
    */
   public async updatePlayer(sessionId: string, guildId: string, data: any): Promise<any> {
+    this._logger.debug(`Updating player for guild ${guildId} in session ${sessionId}`);
     return this.patch(`/v4/sessions/${sessionId}/players/${guildId}`, data);
   }
   
@@ -206,6 +224,7 @@ export class Rest {
    * @param guildId The guild ID
    */
   public async getPlayer(sessionId: string, guildId: string): Promise<any> {
+    this._logger.debug(`Getting player for guild ${guildId} in session ${sessionId}`);
     return this.get(`/v4/sessions/${sessionId}/players/${guildId}`);
   }
   
@@ -214,6 +233,7 @@ export class Rest {
    * @param sessionId The Lavalink session ID
    */
   public async getPlayers(sessionId: string): Promise<any> {
+    this._logger.debug(`Getting all players in session ${sessionId}`);
     return this.get(`/v4/sessions/${sessionId}/players`);
   }
   
@@ -223,6 +243,7 @@ export class Rest {
    * @param guildId The guild ID
    */
   public async destroyPlayer(sessionId: string, guildId: string): Promise<any> {
+    this._logger.debug(`Destroying player for guild ${guildId} in session ${sessionId}`);
     return this.delete(`/v4/sessions/${sessionId}/players/${guildId}`);
   }
   
@@ -237,6 +258,7 @@ export class Rest {
     guildId: string, 
     voiceUpdate: { token: string; endpoint: string; sessionId: string }
   ): Promise<any> {
+    this._logger.debug(`Updating voice server for guild ${guildId} in session ${sessionId}`);
     return this.patch(`/v4/sessions/${sessionId}/players/${guildId}`, {
       voice: voiceUpdate
     });
@@ -253,6 +275,7 @@ export class Rest {
     resumeKey: string, 
     timeout: number = 60
   ): Promise<any> {
+    this._logger.debug(`Updating session ${sessionId} with resume timeout ${timeout}s`);
     return this.patch(`/v4/sessions/${sessionId}`, {
       resuming: {
         key: resumeKey,
@@ -269,6 +292,7 @@ export class Rest {
   public processRestEvents(node: any, response: any): void {
     // Check if the response contains events to process
     if (response?.events && Array.isArray(response.events) && response.events.length > 0) {
+      this._logger.debug(`Processing ${response.events.length} events from REST response`);
       for (const event of response.events) {
         if (event.type && event.guildId) {
           const player = node.players.get(event.guildId);

@@ -2,17 +2,25 @@ import { Client } from 'discord.js';
 import { Connector } from './Connector';
 import { DiscordJSConnectorOptions } from '../../types/interfaces';
 
+/**
+ * Discord.js implementation of the Connector
+ * Handles Discord.js specific voice state management
+ * @extends Connector
+ */
 export class DiscordJSConnector extends Connector {
   private client: Client;
 
   /**
-   * Create a Discord.js connector
+   * Creates a Discord.js connector
+   * @param {DiscordJSConnectorOptions} options - Configuration options
+   * @throws {Error} When client is missing or not logged in
    */
   constructor(options: DiscordJSConnectorOptions) {
     if (!options.client) throw new Error('Discord.js Client must be provided');
     if (!options.client.user) throw new Error('Client must be logged in');
 
     super({
+      client: options.client,
       name: options.name || 'default',
       host: options.host || 'localhost',
       port: options.port || 2333,
@@ -20,7 +28,8 @@ export class DiscordJSConnector extends Connector {
       auth: options.auth,
       secure: options.secure || false,
       version: options.version || 'v4',
-      sessionId: options.client.user.id
+      sessionId: options.client.user.id,
+      debug: options.debug
     });
 
     this.client = options.client;
@@ -30,7 +39,8 @@ export class DiscordJSConnector extends Connector {
   }
 
   /**
-   * Set up Discord.js event listeners
+   * Sets up Discord.js event listeners for voice updates
+   * @private
    */
   private setupListeners(): void {
     this.client.on('raw', (packet) => {
@@ -49,8 +59,13 @@ export class DiscordJSConnector extends Connector {
   }
 
   /**
-   * Send voice update to Discord
-   * @override Override the base method to use Discord.js client
+   * Sends voice state update to Discord via Discord.js client
+   * @param {string} guildId - The guild ID
+   * @param {string|null} channelId - The voice channel ID or null to disconnect
+   * @param {boolean} mute - Whether to mute the bot
+   * @param {boolean} deaf - Whether to deafen the bot
+   * @throws {Error} When Discord.js WebSocket is not available or no shards exist
+   * @override
    */
   public async sendVoiceUpdate(guildId: string, channelId: string | null, mute: boolean, deaf: boolean): Promise<void> {
     if (!this.client.ws) throw new Error('Discord.js client WebSocket not available');

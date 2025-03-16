@@ -4,7 +4,12 @@ import { Queue } from './Queue';
 import { PlayerOptions, PlayOptions, Track, FilterOptions, EqualizerBand, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces';
 import { Events, PlayerStates } from '../types/constants';
 import { formatTime } from '../utils/Utils';
+import { Logger } from '../utils/Logger';
 
+/**
+ * Represents a player instance for a guild
+ * @extends EventEmitter
+ */
 export class Player extends EventEmitter {
   public node: Node;
   public guildId: string;
@@ -23,9 +28,12 @@ export class Player extends EventEmitter {
   public deaf: boolean;
   public mute: boolean;
   public filters: FilterOptions;
+  private _logger: Logger;
 
   /**
-   * Creates a new player instance
+   * Creates a player instance
+   * @param {Node} node - The node managing this player
+   * @param {PlayerOptions} options - Player configuration
    */
   constructor(node: Node, options: PlayerOptions) {
     super();
@@ -33,6 +41,7 @@ export class Player extends EventEmitter {
     this.guildId = options.guildId;
     this.voiceChannelId = options.voiceChannelId;
     this.textChannelId = options.textChannelId;
+    this._logger = Logger.create(`Player:${options.guildId}`, node.options.debug || false);
     
     this.playing = false;
     this.paused = false;
@@ -50,24 +59,31 @@ export class Player extends EventEmitter {
     this.deaf = options.deaf ?? false;
     this.mute = options.mute ?? false;
     this.filters = {};
+    
+    this._logger.debug(`Created player for guild ${this.guildId} in voice channel ${this.voiceChannelId}`);
   }
 
   /**
-   * Check if the player is connected
+   * Checks if the node connection is active
+   * @returns {boolean} Connection status
    */
   public get connected(): boolean {
     return this.node.connected;
   }
 
   /**
-   * Get player endpoint URL
+   * Gets the REST endpoint for this player
+   * @returns {string} The API endpoint
+   * @private
    */
   private get playerEndpoint(): string {
     return `/v4/sessions/${this.node.sessionId}/players/${this.guildId}`;
   }
 
   /**
-   * Play a track
+   * Plays a track
+   * @param {PlayOptions} options - Playback options
+   * @throws {Error} If player is not connected
    */
   public async play(options: PlayOptions): Promise<void> {
     if (!this.connected) throw new Error('The player is not connected');
@@ -110,20 +126,26 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Stop the player
+   * Stops the current track
    */
   public async stop(): Promise<void> {
-    await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
-      track: null 
-    });
+    try {
+      await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
+        encodedTrack: null 
+      });
+    } catch (error) {
+      this._logger.error('Error stopping player:', error);
+    }
     
     this.playing = false;
     this.current = null;
     this.state = PlayerStates.IDLE;
+    this._logger.debug('Player stopped');
   }
 
   /**
-   * Pause or resume the player
+   * Pauses or resumes playback
+   * @param {boolean} pause - Whether to pause or resume
    */
   public async pause(pause: boolean): Promise<void> {
     await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
@@ -142,7 +164,9 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Seek to a specific position
+   * Seeks to a position in the track
+   * @param {number} position - Position in milliseconds
+   * @throws {Error} If no track is playing or track isn't seekable
    */
   public async seek(position: number): Promise<void> {
     if (!this.current) throw new Error('Not currently playing anything');
@@ -159,7 +183,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set the player volume
+   * Sets player volume
+   * @param {number} volume - Volume level (0-1000)
    */
   public async setVolume(volume: number): Promise<void> {
     volume = Math.max(0, Math.min(1000, volume));
@@ -172,7 +197,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set player filters
+   * Sets audio filters
+   * @param {FilterOptions} filters - Filter options
    */
   public async setFilters(filters: FilterOptions): Promise<void> {
     this.filters = { ...this.filters, ...filters };
@@ -183,7 +209,7 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Clear all filters
+   * Clears all audio filters
    */
   public async clearFilters(): Promise<void> {
     this.filters = {};
@@ -194,21 +220,23 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set equalizer bands
+   * Sets equalizer bands
+   * @param {EqualizerBand[]} bands - EQ band settings
    */
   public async setEqualizer(bands: EqualizerBand[]): Promise<void> {
     return this.setFilters({ equalizer: bands });
   }
 
   /**
-   * Set karaoke filter
+   * Applies karaoke filter
+   * @param {KaraokeOptions} options - Karaoke settings
    */
   public async setKaraoke(options: KaraokeOptions): Promise<void> {
     return this.setFilters({ karaoke: options });
   }
 
   /**
-   * Clear karaoke filter
+   * Removes karaoke filter
    */
   public async clearKaraoke(): Promise<void> {
     const { karaoke, ...filters } = this.filters;
@@ -216,14 +244,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set timescale filter
+   * Applies timescale filter
+   * @param {TimescaleOptions} options - Timescale settings
    */
   public async setTimescale(options: TimescaleOptions): Promise<void> {
     return this.setFilters({ timescale: options });
   }
 
   /**
-   * Clear timescale filter
+   * Removes timescale filter
    */
   public async clearTimescale(): Promise<void> {
     const { timescale, ...filters } = this.filters;
@@ -231,14 +260,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set tremolo filter
+   * Applies tremolo filter
+   * @param {FrequencyDepthOptions} options - Tremolo settings
    */
   public async setTremolo(options: FrequencyDepthOptions): Promise<void> {
     return this.setFilters({ tremolo: options });
   }
 
   /**
-   * Clear tremolo filter
+   * Removes tremolo filter
    */
   public async clearTremolo(): Promise<void> {
     const { tremolo, ...filters } = this.filters;
@@ -246,14 +276,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set vibrato filter
+   * Applies vibrato filter
+   * @param {FrequencyDepthOptions} options - Vibrato settings
    */
   public async setVibrato(options: FrequencyDepthOptions): Promise<void> {
     return this.setFilters({ vibrato: options });
   }
 
   /**
-   * Clear vibrato filter
+   * Removes vibrato filter
    */
   public async clearVibrato(): Promise<void> {
     const { vibrato, ...filters } = this.filters;
@@ -261,14 +292,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set rotation filter
+   * Applies rotation filter
+   * @param {RotationOptions} options - Rotation settings
    */
   public async setRotation(options: RotationOptions): Promise<void> {
     return this.setFilters({ rotation: options });
   }
 
   /**
-   * Clear rotation filter
+   * Removes rotation filter
    */
   public async clearRotation(): Promise<void> {
     const { rotation, ...filters } = this.filters;
@@ -276,14 +308,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set distortion filter
+   * Applies distortion filter
+   * @param {DistortionOptions} options - Distortion settings
    */
   public async setDistortion(options: DistortionOptions): Promise<void> {
     return this.setFilters({ distortion: options });
   }
 
   /**
-   * Clear distortion filter
+   * Removes distortion filter
    */
   public async clearDistortion(): Promise<void> {
     const { distortion, ...filters } = this.filters;
@@ -291,14 +324,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set channelMix filter
+   * Applies channel mix filter
+   * @param {ChannelMixOptions} options - Channel mix settings
    */
   public async setChannelMix(options: ChannelMixOptions): Promise<void> {
     return this.setFilters({ channelMix: options });
   }
 
   /**
-   * Clear channelMix filter
+   * Removes channel mix filter
    */
   public async clearChannelMix(): Promise<void> {
     const { channelMix, ...filters } = this.filters;
@@ -306,14 +340,15 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set lowPass filter
+   * Applies low pass filter
+   * @param {LowPassOptions} options - Low pass settings
    */
   public async setLowPass(options: LowPassOptions): Promise<void> {
     return this.setFilters({ lowPass: options });
   }
 
   /**
-   * Clear lowPass filter
+   * Removes low pass filter
    */
   public async clearLowPass(): Promise<void> {
     const { lowPass, ...filters } = this.filters;
@@ -321,7 +356,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Skip the current track
+   * Skips the current track
+   * @returns {Promise<Track|null>} The track that now plays or null
    */
   public async skip(): Promise<Track | null> {
     if (!this.playing) return null;
@@ -349,7 +385,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set track repeat mode
+   * Sets track repeat mode
+   * @param {boolean} repeat - Whether to enable track repeat
    */
   public setTrackLoop(repeat: boolean): void {
     this.trackRepeat = repeat;
@@ -357,7 +394,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Set queue repeat mode
+   * Sets queue repeat mode
+   * @param {boolean} repeat - Whether to enable queue repeat
    */
   public setQueueLoop(repeat: boolean): void {
     this.queueRepeat = repeat;
@@ -365,7 +403,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Connect to the voice channel
+   * Connects to the voice channel
+   * @throws {Error} If no voice channel ID is set
    */
   public async connect(): Promise<void> {
     if (!this.voiceChannelId) {
@@ -377,7 +416,7 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Disconnect from the voice channel
+   * Disconnects from the voice channel
    */
   public async disconnect(): Promise<void> {
     await this.node.connector.sendVoiceUpdate(this.guildId, null);
@@ -385,7 +424,7 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Destroy the player
+   * Destroys the player and cleans up resources
    */
   public async destroy(): Promise<void> {
     try {
@@ -406,7 +445,7 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Update server update via REST
+   * Updates voice server data via REST API
    */
   public async updateNode(): Promise<void> {
     const voiceState = this.node.connector.voiceStates.get(this.guildId);
@@ -424,7 +463,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Reset the player
+   * Resets player state to default values
+   * @private
    */
   private cleanup(): void {
     this.playing = false;
@@ -437,7 +477,10 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Handle track repeat logic
+   * Handles track repeat logic
+   * @param {Track} track - Track to repeat
+   * @returns {Promise<Track>} The repeated track
+   * @private
    */
   private async handleTrackRepeat(track: Track): Promise<Track> {
     await this.play({ track });
@@ -445,7 +488,10 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Handle queue repeat logic
+   * Handles queue repeat logic
+   * @param {Track} lastTrack - Last played track
+   * @returns {Promise<Track|null>} Next track or null
+   * @private
    */
   private async handleQueueRepeat(lastTrack: Track): Promise<Track | null> {
     // Add the current track back to queue for queue repeat
@@ -467,7 +513,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Update the player state based on a received event
+   * Updates player state with data from Lavalink
+   * @param {any} data - Player update data
    */
   public update(data: any): void {
     if (data.state) {
@@ -477,7 +524,8 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Get the current formatted time
+   * Gets the current playback position as a formatted string
+   * @returns {string} Formatted time string
    */
   public getFormattedPosition(): string {
     if (!this.current) return '00:00';

@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
 import { Node } from '../../structures/Node';
-import { LoadTrackResponse, NodeOptions } from '../../types/interfaces';
+import { LoadTrackResponse, NodeOptions, ConnectorOptions } from '../../types/interfaces';
 import { Events, LoadTypes } from '../../types/constants';
 
 /**
- * Interface for voice state data
+ * Voice state data containing session and channel information
  */
 interface VoiceState {
   sessionId: string;
@@ -13,32 +13,31 @@ interface VoiceState {
 }
 
 /**
- * Interface for voice server data
+ * Voice server data containing connection credentials
  */
 interface VoiceServer {
   token: string;
   endpoint: string;
 }
 
-interface ConnectorOptions {
-  name: string;
-  host: string;
-  port: number | string;
-  url?: string;
-  auth: string;
-  secure?: boolean;
-  version?: string;
-  sessionId: string;
-}
-
+/**
+ * Base connector for Lavalink integration
+ * 
+ * Handles communication between Discord and Lavalink nodes,
+ * manages connection state and provides methods for audio playback.
+ * @extends EventEmitter
+ */
 export class Connector extends EventEmitter {
+
   public nodes: Map<string, Node>;
   public voiceStates: Map<string, VoiceState>;
   public voiceServers: Map<string, VoiceServer>;
   public clientId: string;
   
   /**
-   * Create a connector instance
+   * Creates a connector instance
+   * @param {ConnectorOptions} options - Configuration options for the connector
+   * @throws {Error} Throws if required options are missing
    */
   constructor(options: ConnectorOptions) {
     super();
@@ -67,7 +66,9 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Create a Lavalink node
+   * Creates a Lavalink node
+   * @param {NodeOptions} options - Configuration for the node
+   * @returns {Node} The created or existing node instance
    */
   public createNode(options: NodeOptions): Node {
     const existingNode = this.nodes.get(options.name);
@@ -91,7 +92,8 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Get the best node based on load
+   * Gets the best node based on load balancing algorithm
+   * @returns {Node|undefined} The best node or undefined if no nodes are available
    */
   public getBestNode(): Node | undefined {
     const nodes = [...this.nodes.values()].filter(node => node.connected);
@@ -111,7 +113,10 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Create a player
+   * Creates a player for a guild
+   * @param {any} options - Player options including guildId and voice channel
+   * @returns {any} The created player instance
+   * @throws {Error} Throws if no nodes are available
    */
   public createPlayer(options: any): any {
     const node = this.getBestNode();
@@ -121,7 +126,10 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Load tracks using the best available node
+   * Loads a track or playlist from the given identifier
+   * @param {string} identifier - Track URL or search query
+   * @returns {Promise<LoadTrackResponse>} The loaded track data
+   * @throws {Error} Throws if no nodes are available
    */
   public async loadTrack(identifier: string): Promise<LoadTrackResponse> {
     const node = this.getBestNode();
@@ -131,7 +139,8 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Handle voice state update from Discord
+   * Processes voice state updates from Discord
+   * @param {any} data - Voice state data from Discord gateway
    */
   public handleVoiceStateUpdate(data: any): void {
     if (data.user_id !== this.clientId) return;
@@ -155,7 +164,8 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Handle voice server update from Discord
+   * Processes voice server updates from Discord
+   * @param {any} data - Voice server data from Discord gateway
    */
   public handleVoiceServerUpdate(data: any): void {
     // Store the voice server
@@ -169,7 +179,9 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Try to establish connection if we have both voice state and server data
+   * Attempts to establish a connection using stored voice state and server data
+   * @param {string} guildId - The guild ID to establish connection for
+   * @private
    */
   private tryConnection(guildId: string): void {
     const state = this.voiceStates.get(guildId);
@@ -207,7 +219,12 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Send voice update to Discord
+   * Sends a voice state update to Discord
+   * @param {string} guildId - The guild ID
+   * @param {string|null} channelId - The voice channel ID or null to disconnect
+   * @param {boolean} mute - Whether to mute the bot
+   * @param {boolean} deaf - Whether to deafen the bot
+   * @returns {Promise<void>}
    */
   public async sendVoiceUpdate(guildId: string, channelId: string | null, mute = false, deaf = false): Promise<void> {
     const payload = {
@@ -225,7 +242,7 @@ export class Connector extends EventEmitter {
   }
 
   /**
-   * Destroy all nodes and connections
+   * Cleans up resources by disconnecting nodes and clearing maps
    */
   public destroy(): void {
     for (const node of this.nodes.values()) {
