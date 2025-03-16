@@ -13,6 +13,7 @@ export { Events, LoadTypes, State, PlayerStates } from './types/constants';
 // Export utilities
 export * from './utils/Utils';
 export * from './utils/FilterUtil';
+export { Logger } from './utils/Logger';
 
 // Export types
 export * from './types/interfaces';
