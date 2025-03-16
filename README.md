@@ -63,6 +63,123 @@ async function playTrack() {
 playTrack().catch(console.error);
 ```
 
+### Setting up with Discord.js
+
+Yukino can be easily integrated with Discord.js in two ways:
+
+#### Method 1: Using the setup helper
+
+```typescript
+import { Client, GatewayIntentBits } from 'discord.js';
+import { setupYukino } from 'yukino';
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
+});
+
+client.once('ready', () => {
+  console.log(`Logged in as ${client.user.tag}!`);
+  
+  // Setup Yukino with the helper function
+  setupYukino(
+    client,
+    {
+      host: 'localhost', 
+      port: 2333,
+      auth: 'youshallnotpass',
+      secure: false,
+      version: 'v4',
+    },
+    {
+      name: 'MainNode',
+      url: 'localhost:2333',
+      auth: 'youshallnotpass',
+    }
+  );
+  
+  // Connect to Lavalink
+  client.yukino.connect();
+});
+```
+
+#### Method 2: Direct instantiation
+
+```typescript
+import { Client, GatewayIntentBits } from 'discord.js';
+import { YukinoClient } from 'yukino';
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
+});
+
+client.once('ready', () => {
+  console.log(`Logged in as ${client.user.tag}!`);
+  
+  // Create and attach Yukino directly
+  client.yukino = new YukinoClient(
+    client,
+    {
+      host: 'localhost', 
+      port: 2333,
+      auth: 'youshallnotpass',
+      secure: false,
+      version: 'v4',
+    },
+    {
+      name: 'MainNode',
+      url: 'localhost:2333',
+      auth: 'youshallnotpass',
+    }
+  );
+  
+  // Connect to Lavalink
+  client.yukino.connect();
+});
+```
+
+### Playing Music
+
+Once Yukino is set up, you can use it to play music:
+
+```typescript
+// Creating a player
+const player = client.yukino.createPlayer({
+  guildId: 'your-guild-id',
+  voiceChannelId: 'voice-channel-id',
+  textChannelId: 'text-channel-id',
+});
+
+// Connect the player to voice
+await player.connect();
+
+// Search and play music
+const result = await client.yukino.loadTrack('your search query');
+if (result.loadType === 'TRACK_LOADED') {
+  await player.play({ track: result.data[0] });
+}
+```
+
+### Managing Players and Queues
+
+You can easily access and manage players and queues:
+
+```typescript
+// Get a player for a specific guild
+const player = client.yukino.getPlayer('guild-id');
+
+// Get the queue for a guild
+const queue = client.yukino.getQueue('guild-id');
+
+// Check all active players
+const activePlayers = client.yukino.players;
+```
+
 ### Advanced Example
 
 For more advanced usage, including queue management and custom plugins, see the [examples](examples) directory.

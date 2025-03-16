@@ -194,7 +194,50 @@ export class Node extends EventEmitter {
    * Load tracks from a query
    */
   public async loadTracks(query: string): Promise<LoadTrackResponse> {
-    return this.rest.loadTracks(query);
+    const response = await this.rest.loadTracks(query);
+    // Process events that might be included in the response
+    this.processEventsFromResponse(response);
+    return response;
+  }
+  
+  /**
+   * Process events from a REST API response
+   * @param response The response from a REST API call that might contain events
+   */
+  public processEventsFromResponse(response: any): void {
+    if (!response) return;
+    
+    // Check if the response contains events to process
+    if (response.events && Array.isArray(response.events) && response.events.length > 0) {
+      console.log(`[Node] Processing ${response.events.length} events from REST response`);
+      
+      for (const event of response.events) {
+        if (event.type && event.guildId) {
+          const player = this.players.get(event.guildId);
+          if (player) {
+            this.handleEventDispatch(player, event);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Execute a REST API call to a player endpoint and process any returned events
+   * @param guildId The guild ID
+   * @param method The HTTP method
+   * @param body The request body
+   */
+  public async callPlayerAPI(guildId: string, method = 'PATCH', body?: any): Promise<any> {
+    if (!this.sessionId) throw new Error('No session ID available');
+    
+    const endpoint = `/v4/sessions/${this.sessionId}/players/${guildId}`;
+    const response = await this.rest.request(endpoint, method, body);
+    
+    // Process any events from the response
+    this.processEventsFromResponse(response);
+    
+    return response;
   }
 
   /**
@@ -269,8 +312,19 @@ export class Node extends EventEmitter {
     if (!player) return;
     
     try {
-      // In v4, we update the voice state via REST API instead of websocket
-      player.updateNode().catch(error => {
+      const voiceState = this.connector.voiceStates.get(guildId);
+      const voiceServer = this.connector.voiceServers.get(guildId);
+      
+      if (!voiceState || !voiceServer) return;
+      
+      // In v4, update the voice state via REST API
+      this.callPlayerAPI(guildId, 'PATCH', {
+        voice: {
+          token: voiceServer.token,
+          endpoint: voiceServer.endpoint,
+          sessionId: voiceState.sessionId
+        }
+      }).catch(error => {
         this.emit(Events.NODE_ERROR, this, error);
       });
     } catch (error) {
@@ -326,6 +380,14 @@ export class Node extends EventEmitter {
         }
         return;
       }
+      
+      // Handle Lavalink v4 events that come through WebSocket
+      if (payload.type && payload.guildId) {
+        const player = this.players.get(payload.guildId);
+        if (player) {
+          this.handleEventDispatch(player, payload);
+        }
+      }
     
       this.emit(Events.NODE_EVENT, this, payload);
     } catch (error) {
@@ -335,9 +397,13 @@ export class Node extends EventEmitter {
   }
 
   /**
-   * Handle Lavalink events
+   * Handle Lavalink events from WebSocket or REST responses
+   * @param player The player instance
+   * @param data The event data
    */
-  private handleEventDispatch(player: Player, data: LavalinkEvent): void {
+  public handleEventDispatch(player: Player, data: LavalinkEvent): void {
+    console.log(`[Node] Handling Lavalink event: ${data.type} for guild ${data.guildId} (source: ${data.source || 'unknown'})`);
+
     switch (data.type) {
       case "TrackStartEvent":
         this.trackStart(player, data);
@@ -436,6 +502,7 @@ export class Node extends EventEmitter {
    * Handle WebSocket closed event
    */
   private socketClosed(player: Player, data: LavalinkEvent): void {
+    console.log(data.code, data.reason, data.byRemote);
     this.emit(Events.WS_CLOSED, player, data.code, data.reason, data.byRemote);
 
     // Attempt to reconnect if the connection was closed unexpectedly

@@ -11,7 +11,7 @@
     "prepare": "npm run build",
     "lint": "eslint src --ext .ts",
     "dev": "ts-node src/index.ts",
-    "client": "nodemon examples/simple-discord-bot.ts",
+    "client": "nodemon --watch src --watch examples/simple-discord-bot.ts",
     "lavalink": "java -jar ./lavalink/Lavalink.jar"
   },
   "keywords": [

@@ -4,14 +4,14 @@ import {
   SlashCommandBuilder,
   REST,
   Routes,
-  ChatInputCommandInteraction,
   GuildMember,
 } from "discord.js";
-import { DiscordJSConnector } from "../src/lib/connectors/DiscordJSConnector";
 import { Events, LoadTypes } from "../src/types/constants";
 import { config } from "dotenv";
 import { Track } from "../src/types/interfaces";
 import { Player } from "../src/structures/Player";
+import { FilterUtil } from "../src/utils/FilterUtil";
+import { YukinoClient } from "../src/structures/YukinoClient";
 
 // Load environment variables
 config();
@@ -32,92 +32,129 @@ const client = new Client({
 // Simple logger
 const log = (message: string) => console.log(`[BOT] ${message}`);
 
-// Store active players
-const players = new Map();
-
-// Track node readiness
-let nodeReady = false;
-
-// Global connector and node references
-let connector: DiscordJSConnector;
-let node: any;
-
 // Set up connector and node when client is ready
 client.once("ready", async () => {
   log(`Logged in as ${client.user?.tag}!`);
 
-  // Create DiscordJSConnector instead of generic Connector
-  // This handles voice state updates automatically
-  connector = new DiscordJSConnector({
+  // Setup Yukino directly with the Discord.js client
+  const connectorOptions = {
     client,
     host: process.env.LAVALINK_HOST || "localhost",
     port: parseInt(process.env.LAVALINK_PORT || "1092"),
     auth: process.env.LAVALINK_PASSWORD || "root",
     secure: false,
     version: "v4",
-  });
+    debug: true, // Enable debug logging for voice state tracking
+  };
 
-  // Create and initialize node
-  node = connector.createNode({
-    name: "TestNode",
+  const nodeOptions = {
+    name: "EriNode",
     url: process.env.LAVALINK_HOST
       ? `${process.env.LAVALINK_HOST}:${process.env.LAVALINK_PORT || "1092"}`
       : "localhost:1092",
     auth: process.env.LAVALINK_PASSWORD || "root",
-  });
+    // Adding reconnect options to make the connection more resilient
+    reconnectOptions: {
+      maxRetryAttempts: 10,
+      retryDelayInMs: 5000,
+    },
+  };
+
+  // Create YukinoClient and attach to Discord.js client
+  client.yukino = new YukinoClient(client, connectorOptions, nodeOptions);
 
   // Better event handling and debugging
-  node.on(Events.NODE_ERROR, (error: any) => {
+  client.yukino.node.on(Events.NODE_ERROR, (error: any) => {
     console.error("[Lavalink] Node error:", error);
-    nodeReady = false;
   });
 
-  node.on(Events.NODE_READY, () => {
+  client.yukino.node.on(Events.NODE_READY, () => {
     log("[Lavalink] Node is ready!");
-    nodeReady = true;
   });
-
 
   // Track events
-  node.on(Events.TRACK_START, (player: Player, track: Track) => {
+  client.yukino.node.on(Events.TRACK_START, (player: Player, track: Track) => {
     log(`[Player] Now playing: ${track.info.title} in guild ${player.guildId}`);
   });
 
-  node.on(Events.TRACK_END, (player: Player, track: Track, reason:any) => {
-    log(
-      `[Player] Track ended: ${track.info.title} in guild ${player.guildId} (${reason})`
-    );
+  client.yukino.node.on(
+    Events.TRACK_END,
+    (player: Player, track: Track, reason: any) => {
+      log(
+        `[Player] Track ended: ${track.info.title} in guild ${player.guildId} (${reason})`
+      );
 
-    // Let the Player's built-in queue handling work
-    if (reason !== "REPLACED" && reason !== "STOPPED") {
-      const nextTrack = player.queue.next();
-      if (nextTrack) {
-        player
-          .play({ track: nextTrack })
-          .catch((err: any) => console.error("Error playing next track:", err));
+      // Let the Player's built-in queue handling work
+      if (reason !== "REPLACED" && reason !== "STOPPED") {
+        const nextTrack = player.queue.next();
+        if (nextTrack) {
+          player
+            .play({ track: nextTrack })
+            .catch((err: any) =>
+              console.error("Error playing next track:", err)
+            );
+        }
       }
     }
-  });
+  );
 
-  node.on(Events.TRACK_ERROR, (player: Player, track: Track, error: any) => {
-    console.error(`[Player] Error playing track ${track.info.title}:`, error);
-  });
+  client.yukino.node.on(
+    Events.TRACK_ERROR,
+    (player: Player, track: Track, error: any) => {
+      console.error(`[Player] Error playing track ${track.info.title}:`, error);
+    }
+  );
 
-  node.on(Events.PLAYER_CREATE, (player: Player) => {
+  client.yukino.node.on(Events.PLAYER_CREATE, (player: Player) => {
     log(`Player successfully connected in guild ${player.guildId}`);
   });
 
-  node.on(Events.PLAYER_DESTROY, (player: Player, reason: any) => {
+  client.yukino.node.on(
+    Events.PLAYER_DESTROY,
+    (player: Player, reason: any) => {
+      log(
+        `Player disconnected in guild ${player.guildId}: ${reason || "No reason provided"
+        }`
+      );
+    }
+  );
+
+  // Add handler for WebSocket closed events
+  client.yukino.node.on(Events.WS_CLOSED, (player, data) => {
     log(
-      `Player disconnected in guild ${player.guildId}: ${
-        reason || "No reason provided"
-      }`
+      `[Voice] WebSocket closed for guild ${player.guildId}: Code ${data?.code
+      }, Reason: ${data?.reason || "Unknown"}, By Remote: ${data?.byRemote}`
     );
-    players.delete(player.guildId);
+
+    // Handle specific error codes
+    if (data?.code === 4006) {
+      log(
+        `[Voice] Session no longer valid for guild ${player.guildId}, attempting to reconnect...`
+      );
+
+      // Try to reconnect the player if session becomes invalid
+      setTimeout(() => {
+        if (player && player.options.voiceChannelId) {
+          log(
+            `[Voice] Attempting to reconnect player in guild ${player.guildId}...`
+          );
+          player
+            .connect()
+            .then(() =>
+              log(
+                `[Voice] Successfully reconnected player in guild ${player.guildId}`
+              )
+            )
+            .catch((err: any) =>
+              log(`[Voice] Failed to reconnect player: ${err.message}`)
+            );
+        }
+      }, 2000);
+    }
   });
 
   // Connect to Lavalink
-  node.connect();
+  client.yukino.connect();
 
   // Register slash commands
   registerCommands();
@@ -130,10 +167,11 @@ async function createPlayer(
   textChannelId: string
 ) {
   // Return existing player if available
-  if (players.has(guildId)) return players.get(guildId);
+  const existingPlayer = client.yukino.getPlayer(guildId);
+  if (existingPlayer) return existingPlayer;
 
   // Check if node is ready
-  if (!nodeReady) {
+  if (!client.yukino.isReady) {
     throw new Error(
       "Lavalink node is not ready yet. Please try again in a moment."
     );
@@ -144,16 +182,15 @@ async function createPlayer(
   );
 
   // Create the player using connector
-  const player = connector.createPlayer({
+  const player = client.yukino.createPlayer({
     guildId,
     voiceChannelId,
     textChannelId,
     volume: 100,
-    deaf: false, // Setting to false for troubleshooting
+    deaf: true,
+    // Adding autoReconnect option
+    autoReconnect: true,
   });
-
-  // Store player reference
-  players.set(guildId, player);
 
   // Connect the player
   try {
@@ -161,7 +198,6 @@ async function createPlayer(
     log(`[Voice] Player successfully connected to voice in guild ${guildId}`);
   } catch (error) {
     log(`[Voice] Error connecting player: ${(error as Error).message}`);
-    players.delete(guildId);
     throw error;
   }
 
@@ -192,6 +228,22 @@ const commands = [
   new SlashCommandBuilder()
     .setName("nowplaying")
     .setDescription("Show information about the currently playing track"),
+  new SlashCommandBuilder()
+    .setName("filter")
+    .setDescription("Apply audio filters to the current track")
+    .addStringOption((option) =>
+      option
+        .setName("type")
+        .setDescription("The type of filter to apply")
+        .setRequired(true)
+        .addChoices(
+          { name: "Bass Boost", value: "bassboost" },
+          { name: "Nightcore", value: "nightcore" },
+          { name: "Vaporwave", value: "vaporwave" },
+          { name: "8D Audio", value: "8d" },
+          { name: "Reset Filters", value: "reset" }
+        )
+    ),
 ].map((command) => command.toJSON());
 
 // Register commands
@@ -280,14 +332,6 @@ client.on("interactionCreate", async (interaction) => {
         await interaction.deferReply();
 
         try {
-          // Check if Lavalink node is ready
-          if (!nodeReady) {
-            await interaction.editReply(
-              "❌ Lavalink node is not ready yet. Please try again in a moment."
-            );
-            return;
-          }
-
           // Create player
           const player = await createPlayer(
             interaction.guildId,
@@ -296,12 +340,11 @@ client.on("interactionCreate", async (interaction) => {
           );
 
           // Load track
-          const result = await connector.loadTrack(query);
+          const result = await client.yukino.loadTrack(query);
           if (!result || !result.data || !result.data.length) {
             await interaction.editReply("❌ No tracks found!");
             return;
           }
-
           if (
             result.loadType === LoadTypes.SEARCH_RESULT ||
             result.loadType === LoadTypes.TRACK_LOADED
@@ -329,7 +372,7 @@ client.on("interactionCreate", async (interaction) => {
 
             // Add all but first track to queue
             for (const track of restTracks) {
-              player.queue.add({track});
+              player.queue.add(track);
             }
 
             // Play first track
@@ -357,7 +400,7 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       case "stop": {
-        const player = players.get(interaction.guildId);
+        const player = client.yukino.getPlayer(interaction.guildId);
         if (!player) {
           await interaction.reply({
             content: "Nothing is playing!",
@@ -367,13 +410,12 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         await player.destroy();
-        players.delete(interaction.guildId);
         await interaction.reply("⏹️ Playback stopped!");
         break;
       }
 
       case "pause": {
-        const player = players.get(interaction.guildId);
+        const player = client.yukino.getPlayer(interaction.guildId);
         if (!player) {
           await interaction.reply({
             content: "Nothing is playing!",
@@ -388,7 +430,7 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       case "resume": {
-        const player = players.get(interaction.guildId);
+        const player = client.yukino.getPlayer(interaction.guildId);
         if (!player) {
           await interaction.reply({
             content: "Nothing is playing!",
@@ -403,7 +445,7 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       case "skip": {
-        const player = players.get(interaction.guildId);
+        const player = client.yukino.getPlayer(interaction.guildId);
         if (!player) {
           await interaction.reply({
             content: "Nothing is playing!",
@@ -425,7 +467,7 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       case "nowplaying": {
-        const player = players.get(interaction.guildId);
+        const player = client.yukino.getPlayer(interaction.guildId);
         if (!player || !player.current) {
           await interaction.reply({
             content: "Nothing is playing right now!",
@@ -471,6 +513,62 @@ ${player.paused ? "⏸️ Paused" : "▶️ Playing"}${nextInQueue}
         break;
       }
 
+      case "filter": {
+        const player = client.yukino.getPlayer(interaction.guildId);
+        if (!player) {
+          await interaction.reply({
+            content: "Nothing is playing!",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const filterType = interaction.options.getString("type");
+        await interaction.deferReply();
+
+        try {
+          switch (filterType) {
+            case "bassboost": {
+              await player.setEqualizer(FilterUtil.createBassBoostEQ(0.5));
+              await interaction.editReply("🔊 Applied Bass Boost filter!");
+              break;
+            }
+            case "nightcore": {
+              await player.setTimescale(FilterUtil.nightcorePreset().timescale);
+              await interaction.editReply("⏩ Applied Nightcore filter!");
+              break;
+            }
+            case "vaporwave": {
+              await player.setTimescale(FilterUtil.vaporwavePreset().timescale);
+              await interaction.editReply("⏪ Applied Vaporwave filter!");
+              break;
+            }
+            case "8d": {
+              await player.setRotation(
+                FilterUtil.eightDimensionalPreset().rotation
+              );
+              await interaction.editReply("🔄 Applied 8D Audio filter!");
+              break;
+            }
+            case "reset": {
+              await player.clearFilters();
+              await interaction.editReply("🔄 Reset all audio filters!");
+              break;
+            }
+            default: {
+              await interaction.editReply("❌ Unknown filter type!");
+              break;
+            }
+          }
+        } catch (error: any) {
+          console.error("Filter error:", error);
+          await interaction.editReply(
+            `❌ Error applying filter: ${error.message || "Unknown error"}`
+          );
+        }
+        break;
+      }
+
       default: {
         await interaction.reply({
           content: "Unknown command!",
@@ -491,18 +589,88 @@ ${player.paused ? "⏸️ Paused" : "▶️ Playing"}${nextInQueue}
   }
 });
 
+// Better voice state handling
+client.on("voiceStateUpdate", async (oldState, newState) => {
+  // Only handle events for our bot
+  if (
+    oldState.member?.user.id !== client.user?.id &&
+    newState.member?.user.id !== client.user?.id
+  ) {
+    return;
+  }
+
+  log(
+    `[Voice] Voice state changed: ${oldState.channelId || "none"} -> ${newState.channelId || "none"
+    }`
+  );
+
+  // Bot was disconnected from voice channel
+  if (oldState.channelId && !newState.channelId) {
+    log(
+      `[Voice] Bot was disconnected from voice channel in guild ${oldState.guild.id}`
+    );
+
+    // Get the player
+    const player = client.yukino.getPlayer(oldState.guild.id);
+
+    if (player) {
+      // If we were forcibly disconnected but still have an active player
+      if (player.playing) {
+        log(
+          `[Voice] Attempting to reconnect to channel ${player.voiceChannelId}`
+        );
+
+        // Use the YukinoClient updateVoiceState method that uses the connector
+        setTimeout(() => {
+          client.yukino.connector.sendVoiceUpdate(
+            oldState.guild.id,
+            player.voiceChannelId,
+            player.deaf || true
+          )
+            .then(() => {
+              log(
+                `[Voice] Voice state update sent for guild ${oldState.guild.id}`
+              );
+            })
+            .catch((error) => {
+              log(`[Voice] Failed to reconnect: ${error.message}`);
+              player.destroy().catch(console.error);
+            });
+        }, 1000);
+      } else {
+        // If not playing, just clean up the player
+        log(`[Voice] Cleaning up player for guild ${oldState.guild.id}`);
+        player.destroy().catch(console.error);
+      }
+    }
+  }
+
+  // Bot was moved to another channel
+  else if (
+    oldState.channelId &&
+    newState.channelId &&
+    oldState.channelId !== newState.channelId
+  ) {
+    log(
+      `[Voice] Bot was moved to a different channel in guild ${newState.guild.id}`
+    );
+
+    // Update the player's voice channel using YukinoClient
+    const player = client.yukino.getPlayer(newState.guild.id);
+    if (player) {
+      player.voiceChannelId = newState.channelId;
+      log(`[Voice] Updated player voice channel to ${newState.channelId}`);
+    }
+  }
+});
+
 // Handle graceful shutdown
 process.on("SIGINT", async () => {
   log("Shutting down...");
 
-  // Destroy all players
-  for (const [_, player] of players) {
-    await player.destroy().catch(console.error);
-  }
-
-  // Destroy the connector if available
-  if (connector) {
-    connector.destroy();
+  // Destroy all players and clean up using yukino client
+  if (client.yukino) {
+    client.yukino.destroy();
   }
 
   // Logout of Discord

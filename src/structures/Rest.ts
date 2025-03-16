@@ -189,4 +189,94 @@ export class Rest {
   public async getSession(sessionId: string): Promise<any> {
     return this.get<any>(`/v4/sessions/${sessionId}`);
   }
+
+  /**
+   * Updates a player using the v4 REST API
+   * @param sessionId The Lavalink session ID
+   * @param guildId The guild ID
+   * @param data The update data
+   */
+  public async updatePlayer(sessionId: string, guildId: string, data: any): Promise<any> {
+    return this.patch(`/v4/sessions/${sessionId}/players/${guildId}`, data);
+  }
+  
+  /**
+   * Gets information about a player
+   * @param sessionId The Lavalink session ID
+   * @param guildId The guild ID
+   */
+  public async getPlayer(sessionId: string, guildId: string): Promise<any> {
+    return this.get(`/v4/sessions/${sessionId}/players/${guildId}`);
+  }
+  
+  /**
+   * Gets all players for a session
+   * @param sessionId The Lavalink session ID
+   */
+  public async getPlayers(sessionId: string): Promise<any> {
+    return this.get(`/v4/sessions/${sessionId}/players`);
+  }
+  
+  /**
+   * Destroys a player
+   * @param sessionId The Lavalink session ID
+   * @param guildId The guild ID
+   */
+  public async destroyPlayer(sessionId: string, guildId: string): Promise<any> {
+    return this.delete(`/v4/sessions/${sessionId}/players/${guildId}`);
+  }
+  
+  /**
+   * Updates the voice server data for a guild
+   * @param sessionId The Lavalink session ID
+   * @param guildId The guild ID
+   * @param voiceUpdate The voice update data
+   */
+  public async updateVoiceServer(
+    sessionId: string, 
+    guildId: string, 
+    voiceUpdate: { token: string; endpoint: string; sessionId: string }
+  ): Promise<any> {
+    return this.patch(`/v4/sessions/${sessionId}/players/${guildId}`, {
+      voice: voiceUpdate
+    });
+  }
+  
+  /**
+   * Updates session configuration (resuming)
+   * @param sessionId The Lavalink session ID
+   * @param resumeKey The resume key
+   * @param timeout Resume timeout in seconds
+   */
+  public async updateSession(
+    sessionId: string, 
+    resumeKey: string, 
+    timeout: number = 60
+  ): Promise<any> {
+    return this.patch(`/v4/sessions/${sessionId}`, {
+      resuming: {
+        key: resumeKey,
+        timeout: timeout
+      }
+    });
+  }
+  
+  /**
+   * Process and handle events from a REST API response
+   * @param node The node instance
+   * @param response The response from a REST API call that might contain events
+   */
+  public processRestEvents(node: any, response: any): void {
+    // Check if the response contains events to process
+    if (response?.events && Array.isArray(response.events) && response.events.length > 0) {
+      for (const event of response.events) {
+        if (event.type && event.guildId) {
+          const player = node.players.get(event.guildId);
+          if (player) {
+            node.handleEventDispatch(player, event);
+          }
+        }
+      }
+    }
+  }
 }

@@ -1,5 +1,20 @@
-import { Player } from "../structures/Player"
-import { Node } from '../structures/Node';
+import { Player } from "../structures/Player";
+import { Node } from "../structures/Node";
+import { Client } from "discord.js";
+
+export interface ConnectorOptions {
+  client: Client;
+  name?: string;
+  host?: string;
+  port?: number | string;
+  url?: string;
+  auth: string;
+  secure?: boolean;
+  version?: string;
+  debug?: boolean;
+}
+
+export interface DiscordJSConnectorOptions extends ConnectorOptions {}
 
 export interface NodeOptions {
   name: string;
@@ -24,7 +39,7 @@ export interface YukinoOptions {
   structures?: {
     Node?: typeof Node;
     Player?: typeof Player;
-  }
+  };
   send: (guildId: string, payload: any) => Promise<void>;
 }
 
@@ -41,7 +56,7 @@ export interface PlayerOptions {
 export interface QueueOptions {
   maxSize?: number;
   defaultVolume?: number;
-  durationType?: 'ms' | 's';
+  durationType?: "ms" | "s";
 }
 
 export interface TrackInfo {
@@ -55,6 +70,7 @@ export interface TrackInfo {
   uri?: string;
   artworkUrl?: string | null;
   sourceName?: string;
+  requester?: string; // Discord user ID of the person who requested the track
 }
 
 export interface Track {
@@ -119,4 +135,66 @@ export interface NodeStats {
     nulled: number;
     deficit: number;
   };
+}
+
+export interface FilterOptions {
+  volume?: number;
+  equalizer?: EqualizerBand[];
+  karaoke?: KaraokeOptions;
+  timescale?: TimescaleOptions;
+  tremolo?: FrequencyDepthOptions;
+  vibrato?: FrequencyDepthOptions;
+  rotation?: RotationOptions;
+  distortion?: DistortionOptions;
+  channelMix?: ChannelMixOptions;
+  lowPass?: LowPassOptions;
+}
+
+export interface EqualizerBand {
+  band: number;
+  gain: number;
+}
+
+export interface KaraokeOptions {
+  level?: number;
+  monoLevel?: number;
+  filterBand?: number;
+  filterWidth?: number;
+}
+
+export interface TimescaleOptions {
+  speed?: number;
+  pitch?: number;
+  rate?: number;
+}
+
+export interface FrequencyDepthOptions {
+  frequency?: number;
+  depth?: number;
+}
+
+export interface RotationOptions {
+  rotationHz?: number;
+}
+
+export interface DistortionOptions {
+  sinOffset?: number;
+  sinScale?: number;
+  cosOffset?: number;
+  cosScale?: number;
+  tanOffset?: number;
+  tanScale?: number;
+  offset?: number;
+  scale?: number;
+}
+
+export interface ChannelMixOptions {
+  leftToLeft?: number;
+  leftToRight?: number;
+  rightToLeft?: number;
+  rightToRight?: number;
+}
+
+export interface LowPassOptions {
+  smoothing?: number;
 }

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Node } from './Node';
 import { Queue } from './Queue';
-import { PlayerOptions, PlayOptions, Track, TrackInfo } from '../types/interfaces';
+import { PlayerOptions, PlayOptions, Track, FilterOptions, EqualizerBand, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces';
 import { Events, PlayerStates } from '../types/constants';
 import { formatTime } from '../utils/Utils';
 
@@ -22,6 +22,7 @@ export class Player extends EventEmitter {
   public queueRepeat: boolean;
   public deaf: boolean;
   public mute: boolean;
+  public filters: FilterOptions;
 
   /**
    * Creates a new player instance
@@ -48,6 +49,7 @@ export class Player extends EventEmitter {
     
     this.deaf = options.deaf ?? false;
     this.mute = options.mute ?? false;
+    this.filters = {};
   }
 
   /**
@@ -172,10 +174,150 @@ export class Player extends EventEmitter {
   /**
    * Set player filters
    */
-  public async setFilters(filters: Record<string, any>): Promise<void> {
+  public async setFilters(filters: FilterOptions): Promise<void> {
+    this.filters = { ...this.filters, ...filters };
+    
     await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
-      filters
+      filters: this.filters
     });
+  }
+
+  /**
+   * Clear all filters
+   */
+  public async clearFilters(): Promise<void> {
+    this.filters = {};
+    
+    await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
+      filters: {}
+    });
+  }
+
+  /**
+   * Set equalizer bands
+   */
+  public async setEqualizer(bands: EqualizerBand[]): Promise<void> {
+    return this.setFilters({ equalizer: bands });
+  }
+
+  /**
+   * Set karaoke filter
+   */
+  public async setKaraoke(options: KaraokeOptions): Promise<void> {
+    return this.setFilters({ karaoke: options });
+  }
+
+  /**
+   * Clear karaoke filter
+   */
+  public async clearKaraoke(): Promise<void> {
+    const { karaoke, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set timescale filter
+   */
+  public async setTimescale(options: TimescaleOptions): Promise<void> {
+    return this.setFilters({ timescale: options });
+  }
+
+  /**
+   * Clear timescale filter
+   */
+  public async clearTimescale(): Promise<void> {
+    const { timescale, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set tremolo filter
+   */
+  public async setTremolo(options: FrequencyDepthOptions): Promise<void> {
+    return this.setFilters({ tremolo: options });
+  }
+
+  /**
+   * Clear tremolo filter
+   */
+  public async clearTremolo(): Promise<void> {
+    const { tremolo, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set vibrato filter
+   */
+  public async setVibrato(options: FrequencyDepthOptions): Promise<void> {
+    return this.setFilters({ vibrato: options });
+  }
+
+  /**
+   * Clear vibrato filter
+   */
+  public async clearVibrato(): Promise<void> {
+    const { vibrato, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set rotation filter
+   */
+  public async setRotation(options: RotationOptions): Promise<void> {
+    return this.setFilters({ rotation: options });
+  }
+
+  /**
+   * Clear rotation filter
+   */
+  public async clearRotation(): Promise<void> {
+    const { rotation, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set distortion filter
+   */
+  public async setDistortion(options: DistortionOptions): Promise<void> {
+    return this.setFilters({ distortion: options });
+  }
+
+  /**
+   * Clear distortion filter
+   */
+  public async clearDistortion(): Promise<void> {
+    const { distortion, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set channelMix filter
+   */
+  public async setChannelMix(options: ChannelMixOptions): Promise<void> {
+    return this.setFilters({ channelMix: options });
+  }
+
+  /**
+   * Clear channelMix filter
+   */
+  public async clearChannelMix(): Promise<void> {
+    const { channelMix, ...filters } = this.filters;
+    return this.setFilters(filters);
+  }
+
+  /**
+   * Set lowPass filter
+   */
+  public async setLowPass(options: LowPassOptions): Promise<void> {
+    return this.setFilters({ lowPass: options });
+  }
+
+  /**
+   * Clear lowPass filter
+   */
+  public async clearLowPass(): Promise<void> {
+    const { lowPass, ...filters } = this.filters;
+    return this.setFilters(filters);
   }
 
   /**
