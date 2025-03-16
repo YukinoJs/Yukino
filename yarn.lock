@@ -986,7 +986,7 @@ caniuse-lite@^1.0.30001688:
   resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001700.tgz"
   integrity sha512-2S6XIXwaE7K7erT8dY+kLQcpa5ms63XlRkMkReXjle+kf6c5g38vyMl+Z5y8dSxOFDhcFe+nxnn261PLxBSQsQ==
 
-chalk@^4.0.0, chalk@^4.0.2, chalk@^4.1.2:
+chalk@^4.0.0, chalk@^4.0.2:
   version "4.1.2"
   resolved "https://registry.npmjs.org/chalk/-/chalk-4.1.2.tgz"
   integrity sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==
@@ -1051,19 +1051,6 @@ concat-map@0.0.1:
   version "0.0.1"
   resolved "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz"
   integrity sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
-
-concurrently@^9.1.2:
-  version "9.1.2"
-  resolved "https://registry.npmjs.org/concurrently/-/concurrently-9.1.2.tgz"
-  integrity sha512-H9MWcoPsYddwbOGM6difjVwVZHl63nwMEwDJG/L7VGtuaJhb12h2caPG2tVPWs7emuYix252iGfqOyrz1GczTQ==
-  dependencies:
-    chalk "^4.1.2"
-    lodash "^4.17.21"
-    rxjs "^7.8.1"
-    shell-quote "^1.8.1"
-    supports-color "^8.1.1"
-    tree-kill "^1.2.2"
-    yargs "^17.7.2"
 
 convert-source-map@^2.0.0:
   version "2.0.0"
@@ -2268,13 +2255,6 @@ resolve@^1.20.0:
     path-parse "^1.0.7"
     supports-preserve-symlinks-flag "^1.0.0"
 
-rxjs@^7.8.1:
-  version "7.8.2"
-  resolved "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz"
-  integrity sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==
-  dependencies:
-    tslib "^2.1.0"
-
 semver@^6.3.0, semver@^6.3.1:
   version "6.3.1"
   resolved "https://registry.npmjs.org/semver/-/semver-6.3.1.tgz"
@@ -2296,11 +2276,6 @@ shebang-regex@^3.0.0:
   version "3.0.0"
   resolved "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz"
   integrity sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==
-
-shell-quote@^1.8.1:
-  version "1.8.2"
-  resolved "https://registry.npmjs.org/shell-quote/-/shell-quote-1.8.2.tgz"
-  integrity sha512-AzqKpGKjrj7EM6rKVQEPpB288oCfnrEIuyoT9cyF4nmGa7V8Zk6f7RRqYisX8X9m+Q7bd632aZW4ky7EhbQztA==
 
 signal-exit@^3.0.3, signal-exit@^3.0.7:
   version "3.0.7"
@@ -2388,7 +2363,7 @@ supports-color@^7.1.0:
   dependencies:
     has-flag "^4.0.0"
 
-supports-color@^8.0.0, supports-color@^8.1.1:
+supports-color@^8.0.0:
   version "8.1.1"
   resolved "https://registry.npmjs.org/supports-color/-/supports-color-8.1.1.tgz"
   integrity sha512-MpUEN2OodtUzxvKQl72cUF7RQ5EiHsGvSsVG0ia9c5RbWGL2CI4C7EpPS8UTBIplnlzZiNuV56w+FuNxy3ty2Q==
@@ -2420,11 +2395,6 @@ to-regex-range@^5.0.1:
   integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
   dependencies:
     is-number "^7.0.0"
-
-tree-kill@^1.2.2:
-  version "1.2.2"
-  resolved "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz"
-  integrity sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==
 
 ts-jest@^29.1.1:
   version "29.2.6"
@@ -2465,7 +2435,7 @@ ts-node@^10.9.1:
     v8-compile-cache-lib "^3.0.1"
     yn "3.1.1"
 
-tslib@^2.1.0, tslib@^2.6.2, tslib@^2.6.3:
+tslib@^2.6.2, tslib@^2.6.3:
   version "2.8.1"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
@@ -2573,7 +2543,7 @@ yargs-parser@^21.1.1:
   resolved "https://registry.npmjs.org/yargs-parser/-/yargs-parser-21.1.1.tgz"
   integrity sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==
 
-yargs@^17.3.1, yargs@^17.7.2:
+yargs@^17.3.1:
   version "17.7.2"
   resolved "https://registry.npmjs.org/yargs/-/yargs-17.7.2.tgz"
   integrity sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==
