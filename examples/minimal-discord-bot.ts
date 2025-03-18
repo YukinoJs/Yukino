@@ -54,8 +54,8 @@ client.once("ready", async () => {
     const connectorOptions = {
       client,
       host: process.env.LAVALINK_HOST || "localhost",
-      port: parseInt(process.env.LAVALINK_PORT || "1092"),
-      auth: process.env.LAVALINK_PASSWORD || "root",
+      port: parseInt(process.env.LAVALINK_PORT || "2333"),
+      auth: process.env.LAVALINK_PASSWORD || "youshallnotpass",
       secure: false,
       version: "v4",
       debug: true, // Enable debug logging
@@ -66,9 +66,9 @@ client.once("ready", async () => {
     const nodeOptions = {
       name: "DebugNode",
       url: process.env.LAVALINK_HOST
-        ? `${process.env.LAVALINK_HOST}:${process.env.LAVALINK_PORT || "1092"}`
-        : "localhost:1092",
-      auth: process.env.LAVALINK_PASSWORD || "root",
+        ? `${process.env.LAVALINK_HOST}:${process.env.LAVALINK_PORT || "2333"}`
+        : "localhost:2333",
+      auth: process.env.LAVALINK_PASSWORD || "youshallnotpass",
       secure: false,
     };
 

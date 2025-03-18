@@ -11,6 +11,7 @@ yarn-error.log*
 # Output directories
 dist/
 build/
+lavalink/
 
 # Logs
 logs/
