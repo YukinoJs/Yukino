@@ -3,6 +3,22 @@ name: Publish to NPM
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry-run:
+        description: 'Perform a dry run without publishing'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
