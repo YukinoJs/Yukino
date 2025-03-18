@@ -1,8 +1,8 @@
-import { LoadTrackResponse, RestOptions } from '../types/interfaces';
-import { LoadTypes } from '../types/constants';
-import { isValidURL } from '../utils/Utils';
+import { LoadTrackResponse, RestOptions } from '../types/interfaces.ts';
+import { LoadTypes } from '../types/constants.ts';
+import { isValidURL } from '../utils/Utils.ts';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { Logger } from '../utils/Logger';
+import { Logger } from '../utils/Logger.ts';
 
 export class Rest {
   public options: Required<RestOptions>;

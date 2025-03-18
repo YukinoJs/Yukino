@@ -1,12 +1,12 @@
 import { Client } from 'discord.js';
-import { Connector } from '../lib/connectors/Connector';
-import { DiscordJSConnector } from '../lib/connectors/DiscordJSConnector';
-import { Player } from './Player';
-import { Queue } from './Queue';
-import { Node } from './Node';
-import { ConnectorOptions, NodeOptions, RestOptions} from '../types/interfaces';
-import { Events } from '../types/constants';
-import { Logger } from '../utils/Logger';
+import { Connector } from '../lib/connectors/Connector.ts';
+import { DiscordJSConnector } from '../lib/connectors/DiscordJSConnector.ts';
+import { Player } from './Player.ts';
+import { Queue } from './Queue.ts';
+import { Node } from './Node.ts';
+import { ConnectorOptions, NodeOptions, RestOptions} from '../types/interfaces.ts';
+import { Events } from '../types/constants.ts';
+import { Logger } from '../utils/Logger.ts';
 
 export class YukinoClient {
   public connector: Connector;
@@ -19,7 +19,7 @@ export class YukinoClient {
   
   /**
    * Creates a new Yukino music client
-   * @param client Discord.js client
+   * @param client Discord.ts client
    * @param options Connector options
    * @param nodeOptions Node options
    */
@@ -38,7 +38,7 @@ export class YukinoClient {
       }
     }));
     
-    // Set up connector with Discord.js client
+    // Set up connector with Discord.ts client
     if (!options.client) {
       options.client = client;
       this._logger.debug('Setting client in connector options');

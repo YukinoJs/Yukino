@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
-import { Node } from './Node';
-import { Queue } from './Queue';
-import { PlayerOptions, PlayOptions, Track, FilterOptions, EqualizerBand, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces';
-import { Events, PlayerStates } from '../types/constants';
-import { formatTime } from '../utils/Utils';
-import { Logger } from '../utils/Logger';
+import { Node } from './Node.ts';
+import { Queue } from './Queue.ts';
+import { PlayerOptions, PlayOptions, Track, FilterOptions, EqualizerBand, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces.ts';
+import { Events, PlayerStates } from '../types/constants.ts';
+import { formatTime } from '../utils/Utils.ts';
+import { Logger } from '../utils/Logger.ts';
 
 /**
  * Represents a player instance for a guild

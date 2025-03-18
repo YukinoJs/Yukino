@@ -1,4 +1,4 @@
-import { EqualizerBand } from '../types/interfaces';
+import { EqualizerBand } from '../types/interfaces.ts';
 
 export class FilterUtil {
   /**

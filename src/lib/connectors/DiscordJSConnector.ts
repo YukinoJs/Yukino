@@ -1,22 +1,22 @@
 import { Client } from 'discord.js';
-import { Connector } from './Connector';
-import { DiscordJSConnectorOptions } from '../../types/interfaces';
+import { Connector } from './Connector.ts';
+import { DiscordJSConnectorOptions } from '../../types/interfaces.ts';
 
 /**
- * Discord.js implementation of the Connector
- * Handles Discord.js specific voice state management
+ * Discord.ts implementation of the Connector
+ * Handles Discord.ts specific voice state management
  * @extends Connector
  */
 export class DiscordJSConnector extends Connector {
   private client: Client;
 
   /**
-   * Creates a Discord.js connector
+   * Creates a Discord.ts connector
    * @param {DiscordJSConnectorOptions} options - Configuration options
    * @throws {Error} When client is missing or not logged in
    */
   constructor(options: DiscordJSConnectorOptions) {
-    if (!options.client) throw new Error('Discord.js Client must be provided');
+    if (!options.client) throw new Error('Discord.ts Client must be provided');
     if (!options.client.user) throw new Error('Client must be logged in');
 
     super({
@@ -39,7 +39,7 @@ export class DiscordJSConnector extends Connector {
   }
 
   /**
-   * Sets up Discord.js event listeners for voice updates
+   * Sets up Discord.ts event listeners for voice updates
    * @private
    */
   private setupListeners(): void {
@@ -59,16 +59,16 @@ export class DiscordJSConnector extends Connector {
   }
 
   /**
-   * Sends voice state update to Discord via Discord.js client
+   * Sends voice state update to Discord via Discord.ts client
    * @param {string} guildId - The guild ID
    * @param {string|null} channelId - The voice channel ID or null to disconnect
    * @param {boolean} mute - Whether to mute the bot
    * @param {boolean} deaf - Whether to deafen the bot
-   * @throws {Error} When Discord.js WebSocket is not available or no shards exist
+   * @throws {Error} When Discord.ts WebSocket is not available or no shards exist
    * @override
    */
   public async sendVoiceUpdate(guildId: string, channelId: string | null, mute: boolean, deaf: boolean): Promise<void> {
-    if (!this.client.ws) throw new Error('Discord.js client WebSocket not available');
+    if (!this.client.ws) throw new Error('Discord.ts client WebSocket not available');
 
     const payload = {
       op: 4,
@@ -80,7 +80,7 @@ export class DiscordJSConnector extends Connector {
       }
     };
 
-    // Use the proper method to send WebSocket data in newer Discord.js versions
+    // Use the proper method to send WebSocket data in newer Discord.ts versions
     const shard = this.client.ws.shards.first();
     if (!shard) throw new Error('No shards available');
     await shard.send(payload);

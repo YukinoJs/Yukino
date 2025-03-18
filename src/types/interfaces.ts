@@ -1,5 +1,5 @@
-import { Player } from "../structures/Player";
-import { Node } from "../structures/Node";
+import { Player } from "../structures/Player.ts";
+import { Node } from "../structures/Node.ts";
 import { Client } from "discord.js";
 
 export interface ConnectorOptions {

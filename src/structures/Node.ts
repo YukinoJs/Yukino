@@ -1,18 +1,18 @@
 import { EventEmitter } from "events";
 import WebSocket from "ws";
-import { Connector } from "../lib/connectors/Connector";
-import { Player } from "./Player";
-import { Rest } from "./Rest";
+import { Connector } from "../lib/connectors/Connector.ts";
+import { Player } from "./Player.ts";
+import { Rest } from "./Rest.ts";
 import {
   NodeOptions,
   PlayerOptions,
   LavalinkEvent,
   NodeStats,
   LoadTrackResponse,
-} from "../types/interfaces";
-import { Events, State, PlayerStates, Versions } from "../types/constants";
-import { wait } from "../utils/Utils";
-import { Logger } from "../utils/Logger";
+} from "../types/interfaces.ts";
+import { Events, State, PlayerStates, Versions } from "../types/constants.ts";
+import { wait } from "../utils/Utils.ts";
+import { Logger } from "../utils/Logger.ts";
 
 /**
  * Represents a connection to a Lavalink node

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
-import { Node } from '../../structures/Node';
-import { LoadTrackResponse, NodeOptions, ConnectorOptions } from '../../types/interfaces';
-import { Events, LoadTypes } from '../../types/constants';
+import { Node } from '../../structures/Node.ts';
+import { LoadTrackResponse, NodeOptions, ConnectorOptions } from '../../types/interfaces.ts';
+import { Events, LoadTypes } from '../../types/constants.ts';
 
 /**
  * Voice state data containing session and channel information
