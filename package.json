@@ -4,6 +4,7 @@
   "description": "Kawaii lavalink client written in TypeScript",
   "type": "module",
   "repository": {
+    "type": "git",
     "url": "https://github.com/YukinoJs/yukino.git"
   },
   "main": "dist/index.js",
@@ -19,6 +20,10 @@
   },
   "keywords": [
     "lavalink",
+    "api",
+    "lavalink.js",
+    "discord.js",
+    "lavalink-api",
     "client",
     "music",
     "discord",
@@ -41,13 +46,13 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=7.0.0"
   },
   "dependencies": {
     "@discordjs/voice": "^0.18.0",
     "axios": "^1.8.3",
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7",
     "ws": "^8.18.1"
   }
 }
