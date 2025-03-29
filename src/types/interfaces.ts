@@ -201,3 +201,11 @@ export interface ChannelMixOptions {
 export interface LowPassOptions {
   smoothing?: number;
 }
+
+// Custom filter interfaces moved from FilterUtil.ts
+export interface CustomFilter {
+  name: string;
+  description?: string;
+  filters: FilterOptions;
+  tags?: string[];
+}
