@@ -1,6 +1,6 @@
 {
   "name": "@yukinojs/yukinojs",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Kawaii lavalink client written in TypeScript",
   "type": "module",
   "repository": {
@@ -53,6 +53,7 @@
     "@discordjs/voice": "^0.18.0",
     "axios": "^1.8.3",
     "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
     "ws": "^8.18.1"
   }
 }
