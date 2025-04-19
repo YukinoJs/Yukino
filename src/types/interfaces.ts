@@ -13,6 +13,11 @@ export interface ConnectorOptions {
   version?: string;
   sessionId?: string;
   debug?: boolean;
+  restOptions?: RestOptions;
+  defaultSearchEngine?: string;
+  userAgent?: string;
+  reconnectInterval?: number;
+  reconnectTries?: number;
 }
 
 export interface DiscordJSConnectorOptions extends ConnectorOptions {}
@@ -25,10 +30,27 @@ export interface NodeOptions {
   group?: string;
   reconnectInterval?: number;
   reconnectTries?: number;
+  /**
+   * Number of reconnection attempts (alias for reconnectTries)
+   */
+  retryAmount?: number;
+  /**
+   * Delay between reconnection attempts in ms (alias for reconnectInterval)
+   */
+  retryDelay?: number;
+  /**
+   * Nested reconnect options (docs compatibility)
+   */
+  reconnectOptions?: {
+    retryAmount?: number;
+    retryDelay?: number;
+  };
   resumeKey?: string | null;
   resumeTimeout?: number;
   version?: string;
   debug?: boolean;
+  priority?: number;
+  region?: string;
 }
 
 export interface YukinoOptions {
@@ -51,8 +73,19 @@ export interface PlayerOptions {
   voiceChannelId: string;
   deaf?: boolean;
   mute?: boolean;
+  selfDeaf?: boolean; // For docs compatibility
+  selfMute?: boolean; // For docs compatibility
   volume?: number;
   queueOptions?: QueueOptions;
+  node?: string;
+  nodeGroup?: string;
+  autoReconnect?: boolean;
+  options?: {
+    inactivityTimeout?: number;
+    volumeDecrementer?: number;
+    bufferingTimeout?: number;
+    [key: string]: any;
+  };
 }
 
 export interface QueueOptions {
@@ -116,6 +149,8 @@ export interface RestOptions {
   timeout?: number;
   version?: string;
   debug?: boolean;
+  headers?: Record<string, string>;
+  retries?: number;
 }
 
 export interface NodeStats {
@@ -200,4 +235,35 @@ export interface ChannelMixOptions {
 
 export interface LowPassOptions {
   smoothing?: number;
+}
+
+// Custom filter interfaces moved from FilterUtil.ts
+export interface CustomFilter {
+  name: string;
+  description?: string;
+  filters: FilterOptions;
+  tags?: string[];
+}
+
+export interface SearchOptions {
+  source?: string;
+  requester?: string;
+  context?: Record<string, any>;
+}
+
+export interface NodeGroup {
+  name: string;
+  nodes: Node[];
+}
+
+/**
+ * Aggregate statistics for all connected Lavalink nodes
+ * Extends NodeStats with an additional nodeStats property that contains
+ * individual stats for each node
+ */
+export interface LavalinkStats extends Omit<NodeStats, 'frameStats'> {
+  /**
+   * Individual stats for each node, keyed by node name
+   */
+  nodeStats: Record<string, NodeStats>;
 }

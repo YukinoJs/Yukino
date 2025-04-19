@@ -1,7 +1,8 @@
 import { EventEmitter } from 'events';
 import { Node } from '../../structures/Node.ts';
-import { LoadTrackResponse, NodeOptions, ConnectorOptions } from '../../types/interfaces.ts';
-import { Events, LoadTypes } from '../../types/constants.ts';
+import { LoadTrackResponse, NodeOptions, ConnectorOptions, RestOptions, SearchOptions } from '../../types/interfaces.ts';
+import { Events, LoadTypes, SearchTypes } from '../../types/constants.ts';
+import { Logger } from '../../utils/Logger.ts';
 
 /**
  * Voice state data containing session and channel information
@@ -33,6 +34,8 @@ export class Connector extends EventEmitter {
   public voiceStates: Map<string, VoiceState>;
   public voiceServers: Map<string, VoiceServer>;
   public clientId: string;
+  public defaultSearchEngine: string = SearchTypes.YOUTUBE;
+  private _logger: Logger;
   
   /**
    * Creates a connector instance
@@ -51,32 +54,82 @@ export class Connector extends EventEmitter {
     this.voiceStates = new Map();
     this.voiceServers = new Map();
     this.clientId = options.sessionId;
+    this._logger = Logger.create('Connector', options.debug || false);
     
-    // Create the default node
-    const url = options.url || `${options.host}:${options.port}`;
+    // Set default search engine if specified
+    if (options.defaultSearchEngine) {
+      this.defaultSearchEngine = options.defaultSearchEngine;
+      this._logger.debug(`Set default search engine to: ${this.defaultSearchEngine}`);
+    }
     
-    const nodeOptions: NodeOptions = {
-      name: options.name || 'default',
-      url,
-      auth: options.auth,
-      secure: options.secure || false
-    };
-    
-    this.createNode(nodeOptions);
+    // Create the default node if no nodes exist yet
+    if (this.nodes.size === 0) {
+      const url = options.url || `${options.host}:${options.port}`;
+      
+      const nodeOptions: NodeOptions = {
+        name: options.name || 'default',
+        url,
+        auth: options.auth,
+        secure: options.secure || false,
+        debug: options.debug,
+        version: options.version,
+        reconnectInterval: options.reconnectInterval,
+        reconnectTries: options.reconnectTries
+      };
+      
+      // Configure REST options if provided
+      const restOptions = options.restOptions ? 
+        { ...options.restOptions } : 
+        undefined;
+      
+      if (restOptions) {
+        this._logger.debug('Using custom REST options for node');
+      }
+      
+      this.createNode(nodeOptions, restOptions);
+    }
   }
 
   /**
    * Creates a Lavalink node
    * @param {NodeOptions} options - Configuration for the node
+   * @param {RestOptions} [restOptions] - Optional custom REST options
    * @returns {Node} The created or existing node instance
    */
-  public createNode(options: NodeOptions): Node {
+  public createNode(options: NodeOptions, restOptions?: RestOptions): Node {
     const existingNode = this.nodes.get(options.name);
-    if (existingNode) return existingNode;
+    if (existingNode) {
+      this._logger.debug(`Node ${options.name} already exists, returning existing instance`);
+      return existingNode;
+    }
+    
+    this._logger.debug(`Creating new node: ${options.name}`);
+    
+    // If custom REST options are provided, include them in the node creation
+    if (restOptions) {
+      // The Node constructor will merge these with its defaults
+      this._logger.debug(`Applying custom REST options to node ${options.name}`);
+      
+      // We can pass the REST options to the Node constructor through a property
+      // that would be used when initializing the Rest instance
+      (options as any).restOptions = restOptions;
+    }
     
     const node = new Node(this, options);
     this.nodes.set(options.name, node);
     
+    // Set up event forwarding from node to connector
+    this._setupNodeEvents(node);
+    
+    return node;
+  }
+
+  /**
+   * Set up event listeners for a specific node
+   * @param {Node} node - The node to set up events for
+   * @private
+   */
+  private _setupNodeEvents(node: Node): void {
     node.on(Events.NODE_READY, () => this.emit(Events.NODE_READY, node));
     node.on(Events.NODE_ERROR, (node, error) => this.emit(Events.NODE_ERROR, node, error));
     node.on(Events.NODE_CLOSED, (node, code, reason) => this.emit(Events.NODE_CLOSED, node, code, reason));
@@ -87,29 +140,53 @@ export class Connector extends EventEmitter {
     node.on(Events.TRACK_END, (player, track, reason) => this.emit(Events.TRACK_END, player, track, reason));
     node.on(Events.TRACK_STUCK, (player, track, thresholdMs) => this.emit(Events.TRACK_STUCK, player, track, thresholdMs));
     node.on(Events.TRACK_ERROR, (player, track, error) => this.emit(Events.TRACK_ERROR, player, track, error));
-    
-    return node;
+    node.on(Events.WS_CLOSED, (player, code, reason, byRemote) => this.emit(Events.WS_CLOSED, player, code, reason, byRemote));
   }
 
   /**
    * Gets the best node based on load balancing algorithm
+   * @param {string} [guildId] - Optional guild ID for context
+   * @param {string} [group] - Optional node group name to filter by
    * @returns {Node|undefined} The best node or undefined if no nodes are available
    */
-  public getBestNode(): Node | undefined {
-    const nodes = [...this.nodes.values()].filter(node => node.connected);
+  public getBestNode(guildId?: string, group?: string): Node | undefined {
+    let nodes = [...this.nodes.values()].filter(node => node.connected);
     
-    if (!nodes.length) return undefined;
+    // Filter by group if specified
+    if (group) {
+      nodes = nodes.filter(node => node.group === group);
+    }
     
-    // Find the node with the least load
-    return nodes.reduce((prev, curr) => {
-      if (!prev.stats?.players) return curr;
-      if (!curr.stats?.players) return prev;
+    if (!nodes.length) {
+      this._logger.debug(`No available nodes${group ? ` in group ${group}` : ''}`);
+      return undefined;
+    }
+    
+    // Check if any node already has a player for this guild
+    if (guildId) {
+      const nodeWithPlayer = nodes.find(node => node.players.has(guildId));
+      if (nodeWithPlayer) {
+        this._logger.debug(`Found existing node for guild ${guildId}: ${nodeWithPlayer.name}`);
+        return nodeWithPlayer;
+      }
+    }
+    
+    // Sort by load penalties and priority (lower is better for both)
+    nodes.sort((a, b) => {
+      // First compare by priority if available
+      const priorityA = a.options.priority !== undefined ? a.options.priority : 0;
+      const priorityB = b.options.priority !== undefined ? b.options.priority : 0;
       
-      const prevLoad = prev.stats.players;
-      const currLoad = curr.stats.players;
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
       
-      return prevLoad <= currLoad ? prev : curr;
+      // Then compare by penalties
+      return a.penalties - b.penalties;
     });
+    
+    this._logger.debug(`Selected best node: ${nodes[0].name}`);
+    return nodes[0];
   }
 
   /**
@@ -119,34 +196,73 @@ export class Connector extends EventEmitter {
    * @throws {Error} Throws if no nodes are available
    */
   public createPlayer(options: any): any {
-    const node = this.getBestNode();
+    // Choose node based on options
+    let node;
+    
+    if (options.node && this.nodes.has(options.node)) {
+      node = this.nodes.get(options.node);
+      this._logger.debug(`Using specified node: ${options.node}`);
+    } else if (options.nodeGroup) {
+      node = this.getBestNode(options.guildId, options.nodeGroup);
+      this._logger.debug(`Selected node from group ${options.nodeGroup}: ${node?.name}`);
+    } else {
+      node = this.getBestNode(options.guildId);
+      this._logger.debug(`Selected best node: ${node?.name}`);
+    }
+    
     if (!node) throw new Error('No available nodes');
     
     return node.createPlayer(options);
   }
 
   /**
-   * Loads a track or playlist from the given identifier
+   * Loads a track or playlist from the given identifier with options
    * @param {string} identifier - Track URL or search query
+   * @param {SearchOptions} [options] - Search options
    * @returns {Promise<LoadTrackResponse>} The loaded track data
    * @throws {Error} Throws if no nodes are available
    */
-  public async loadTrack(identifier: string): Promise<LoadTrackResponse> {
+  public async loadTrack(identifier: string, options: SearchOptions = {}): Promise<LoadTrackResponse> {
+    const source = options.source || this.defaultSearchEngine;
+    this._logger.debug(`Loading track with query: ${identifier}, source: ${source}`);
+    
+    // Choose a node to handle the request
     const node = this.getBestNode();
     if (!node) throw new Error('No available nodes');
     
-    return node.loadTracks(identifier);
+    const result = await node.rest.loadTracks(identifier, source);
+    
+    // Add requester to track info if provided
+    if (options.requester && result.data) {
+      for (const track of result.data) {
+        if (track.info) {
+          track.info.requester = options.requester;
+        }
+      }
+    }
+    
+    // Add any custom context data to the result
+    if (options.context && result.data) {
+      // Store the context in a way that doesn't interfere with the track data
+      (result as any).context = options.context;
+    }
+    
+    return result;
   }
 
   /**
    * Processes voice state updates from Discord
-   * @param {any} data - Voice state data from Discord gateway
+   * @param {any} data - Voice state data
    */
   public handleVoiceStateUpdate(data: any): void {
     if (data.user_id !== this.clientId) return;
     
+    this.emit('handleVoiceStateUpdate', data);
+    
     // Store the voice state
     if (data.channel_id) {
+      this._logger.debug(`Voice state update for guild ${data.guild_id}: Channel=${data.channel_id}, Session=${data.session_id}`);
+      
       this.voiceStates.set(data.guild_id, {
         sessionId: data.session_id,
         channelId: data.channel_id,
@@ -154,6 +270,8 @@ export class Connector extends EventEmitter {
       });
     } else {
       // Channel ID is null when disconnecting
+      this._logger.debug(`Voice disconnect for guild ${data.guild_id}`);
+      
       this.voiceServers.delete(data.guild_id);
       this.voiceStates.delete(data.guild_id);
       return;
@@ -165,10 +283,14 @@ export class Connector extends EventEmitter {
 
   /**
    * Processes voice server updates from Discord
-   * @param {any} data - Voice server data from Discord gateway
+   * @param {any} data - Voice server data
    */
   public handleVoiceServerUpdate(data: any): void {
+    this.emit('handleVoiceServerUpdate', data);
+    
     // Store the voice server
+    this._logger.debug(`Voice server update for guild ${data.guild_id}: Endpoint=${data.endpoint}`);
+    
     this.voiceServers.set(data.guild_id, {
       token: data.token,
       endpoint: data.endpoint
@@ -187,7 +309,10 @@ export class Connector extends EventEmitter {
     const state = this.voiceStates.get(guildId);
     const server = this.voiceServers.get(guildId);
     
-    if (!state || !server) return;
+    if (!state || !server) {
+      this._logger.debug(`Cannot connect for guild ${guildId}: Missing ${!state ? 'voice state' : 'voice server'}`);
+      return;
+    }
     
     // Find the node that has a player for this guild
     let handlingNode: Node | undefined;
@@ -199,9 +324,11 @@ export class Connector extends EventEmitter {
     }
     
     // If no node is handling this guild, use the best node
-    handlingNode = handlingNode || this.getBestNode();
+    handlingNode = handlingNode || this.getBestNode(guildId);
     
     if (handlingNode) {
+      this._logger.debug(`Sending voice connection data to node ${handlingNode.name} for guild ${guildId}`);
+      
       // Send voice data to the appropriate node
       handlingNode.handleVoiceStateUpdate({
         guild_id: guildId,
@@ -215,6 +342,8 @@ export class Connector extends EventEmitter {
         token: server.token,
         endpoint: server.endpoint
       });
+    } else {
+      this._logger.debug(`No node available to handle voice connection for guild ${guildId}`);
     }
   }
 
@@ -237,6 +366,8 @@ export class Connector extends EventEmitter {
       }
     };
     
+    this._logger.debug(`Sending voice update for guild ${guildId}: Channel=${channelId}, Mute=${mute}, Deaf=${deaf}`);
+    
     // This is a base implementation that emits an event which should be handled by the client
     this.emit('sendVoiceUpdate', payload);
   }
@@ -245,7 +376,10 @@ export class Connector extends EventEmitter {
    * Cleans up resources by disconnecting nodes and clearing maps
    */
   public destroy(): void {
+    this._logger.debug(`Destroying connector with ${this.nodes.size} nodes`);
+    
     for (const node of this.nodes.values()) {
+      this._logger.debug(`Disconnecting node: ${node.name}`);
       node.disconnect();
     }
     

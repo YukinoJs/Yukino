@@ -15,6 +15,8 @@ export class Rest {
       timeout: 15000,
       version: '4',
       debug: false,
+      headers: {},
+      retries: 3,
       ...options
     };
     
@@ -26,7 +28,8 @@ export class Rest {
       timeout: this.options.timeout,
       headers: {
         Authorization: this.options.auth,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...this.options.headers
       }
     });
     
@@ -36,10 +39,13 @@ export class Rest {
   /**
    * Makes a GET request to the Lavalink REST API
    */
-  public async get<T>(url: string): Promise<T> {
+  public async get<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
     try {
       this._logger.debug(`GET ${url}`);
-      const response = await this.axios.get<T>(url);
+      const config: AxiosRequestConfig = {};
+      if (customHeaders) config.headers = customHeaders;
+      
+      const response = await this.axios.get<T>(url, config);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
@@ -50,10 +56,13 @@ export class Rest {
   /**
    * Makes a POST request to the Lavalink REST API
    */
-  public async post<T>(url: string, data?: any): Promise<T> {
+  public async post<T>(url: string, data?: any, customHeaders?: Record<string, string>): Promise<T> {
     try {
       this._logger.debug(`POST ${url}`, data || '');
-      const response = await this.axios.post<T>(url, data);
+      const config: AxiosRequestConfig = {};
+      if (customHeaders) config.headers = customHeaders;
+      
+      const response = await this.axios.post<T>(url, data, config);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
@@ -64,10 +73,13 @@ export class Rest {
   /**
    * Makes a PATCH request to the Lavalink REST API
    */
-  public async patch<T>(url: string, data?: any): Promise<T> {
+  public async patch<T>(url: string, data?: any, customHeaders?: Record<string, string>): Promise<T> {
     try {
       this._logger.debug(`PATCH ${url}`, data || '');
-      const response = await this.axios.patch<T>(url, data);
+      const config: AxiosRequestConfig = {};
+      if (customHeaders) config.headers = customHeaders;
+      
+      const response = await this.axios.patch<T>(url, data, config);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
@@ -78,10 +90,13 @@ export class Rest {
   /**
    * Makes a DELETE request to the Lavalink REST API
    */
-  public async delete<T>(url: string): Promise<T> {
+  public async delete<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
     try {
       this._logger.debug(`DELETE ${url}`);
-      const response = await this.axios.delete<T>(url);
+      const config: AxiosRequestConfig = {};
+      if (customHeaders) config.headers = customHeaders;
+      
+      const response = await this.axios.delete<T>(url, config);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
@@ -92,7 +107,7 @@ export class Rest {
   /**
    * Generic request method (fallback for custom methods)
    */
-  public async request<T>(endpoint: string, method = 'GET', body?: Record<string, any>): Promise<T> {
+  public async request<T>(endpoint: string, method = 'GET', body?: Record<string, any>, customHeaders?: Record<string, string>): Promise<T> {
     try {
       this._logger.debug(`${method} ${endpoint}`, body || '');
       
@@ -102,6 +117,7 @@ export class Rest {
       };
       
       if (body) config.data = body;
+      if (customHeaders) config.headers = customHeaders;
       
       const response = await this.axios.request<T>(config);
       return response.data;
@@ -123,14 +139,14 @@ export class Rest {
   }
 
   /**
-   * Resolve a track using identifier
+   * Resolve tracks using identifier with customizable search source
    */
-  public async loadTracks(identifier: string): Promise<LoadTrackResponse> {
+  public async loadTracks(identifier: string, source: string = 'ytsearch'): Promise<LoadTrackResponse> {
     if (!identifier) throw new Error('No identifier provided');
 
-    // Convert search queries to encoded format
+    // Convert search queries to encoded format with specified source
     let search = identifier;
-    if (!isValidURL(search)) search = `ytsearch:${search}`;
+    if (!isValidURL(search)) search = `${source}:${search}`;
 
     try {
       this._logger.debug(`Loading tracks: ${search}`);
@@ -245,6 +261,15 @@ export class Rest {
   public async destroyPlayer(sessionId: string, guildId: string): Promise<any> {
     this._logger.debug(`Destroying player for guild ${guildId} in session ${sessionId}`);
     return this.delete(`/v4/sessions/${sessionId}/players/${guildId}`);
+  }
+  
+  /**
+   * Destroys all players for a session
+   * @param sessionId The Lavalink session ID
+   */
+  public async destroyAllPlayers(sessionId: string): Promise<any> {
+    this._logger.debug(`Destroying all players in session ${sessionId}`);
+    return this.delete(`/v4/sessions/${sessionId}/players`);
   }
   
   /**
