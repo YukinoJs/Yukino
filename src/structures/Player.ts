@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Node } from './Node.ts';
 import { Queue } from './Queue.ts';
-import { PlayerOptions, PlayOptions, Track, FilterOptions, EqualizerBand, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces.ts';
+import { PlayerOptions, PlayOptions, Track, FilterOptions } from '../types/interfaces.ts';
 import { Events, PlayerStates } from '../types/constants.ts';
 import { formatTime } from '../utils/Utils.ts';
 import { Logger } from '../utils/Logger.ts';
@@ -29,6 +29,15 @@ export class Player extends EventEmitter {
   public mute: boolean;
   public filters: FilterOptions;
   private _logger: Logger;
+  // Advanced options from docs
+  public inactivityTimeout?: number;
+  public volumeDecrementer?: number;
+  public bufferingTimeout?: number;
+
+  /**
+   * Player statistics (frames sent, nulled, deficit)
+   */
+  public stats: { framesSent?: number; framesNulled?: number; framesDeficit?: number } = {};
 
   /**
    * Creates a player instance
@@ -56,10 +65,16 @@ export class Player extends EventEmitter {
     this.trackRepeat = false;
     this.queueRepeat = false;
     
-    this.deaf = options.deaf ?? false;
-    this.mute = options.mute ?? false;
+    // Support both selfDeaf/selfMute and deaf/mute for compatibility
+    this.deaf = options.selfDeaf ?? options.deaf ?? false;
+    this.mute = options.selfMute ?? options.mute ?? false;
     this.filters = {};
     
+    // Advanced options from docs
+    this.inactivityTimeout = options.options?.inactivityTimeout;
+    this.volumeDecrementer = options.options?.volumeDecrementer;
+    this.bufferingTimeout = options.options?.bufferingTimeout;
+
     this._logger.debug(`Created player for guild ${this.guildId} in voice channel ${this.voiceChannelId}`);
   }
 
@@ -164,6 +179,13 @@ export class Player extends EventEmitter {
   }
 
   /**
+   * Resume playback (alias for pause(false))
+   */
+  public async resume(): Promise<void> {
+    await this.pause(false);
+  }
+
+  /**
    * Seeks to a position in the track
    * @param {number} position - Position in milliseconds
    * @throws {Error} If no track is playing or track isn't seekable
@@ -197,12 +219,31 @@ export class Player extends EventEmitter {
   }
 
   /**
+   * Fades the volume from a start value to an end value over a duration
+   * @param options Fade options: from, to, duration (ms)
+   */
+  public async fade(options: { from?: number; to: number; duration: number }): Promise<void> {
+    const from = options.from ?? this.volume;
+    const to = options.to;
+    const duration = options.duration;
+    const steps = 20;
+    const stepTime = duration / steps;
+    const volumeStep = (to - from) / steps;
+    let current = from;
+    for (let i = 0; i < steps; i++) {
+      current += volumeStep;
+      await this.setVolume(Math.round(current));
+      await new Promise(res => setTimeout(res, stepTime));
+    }
+    await this.setVolume(to);
+  }
+
+  /**
    * Sets audio filters
    * @param {FilterOptions} filters - Filter options
    */
   public async setFilters(filters: FilterOptions): Promise<void> {
     this.filters = { ...this.filters, ...filters };
-    
     await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
       filters: this.filters
     });
@@ -213,146 +254,9 @@ export class Player extends EventEmitter {
    */
   public async clearFilters(): Promise<void> {
     this.filters = {};
-    
     await this.node.rest.request(this.playerEndpoint, 'PATCH', { 
       filters: {}
     });
-  }
-
-  /**
-   * Sets equalizer bands
-   * @param {EqualizerBand[]} bands - EQ band settings
-   */
-  public async setEqualizer(bands: EqualizerBand[]): Promise<void> {
-    return this.setFilters({ equalizer: bands });
-  }
-
-  /**
-   * Applies karaoke filter
-   * @param {KaraokeOptions} options - Karaoke settings
-   */
-  public async setKaraoke(options: KaraokeOptions): Promise<void> {
-    return this.setFilters({ karaoke: options });
-  }
-
-  /**
-   * Removes karaoke filter
-   */
-  public async clearKaraoke(): Promise<void> {
-    const { karaoke, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies timescale filter
-   * @param {TimescaleOptions} options - Timescale settings
-   */
-  public async setTimescale(options: TimescaleOptions): Promise<void> {
-    return this.setFilters({ timescale: options });
-  }
-
-  /**
-   * Removes timescale filter
-   */
-  public async clearTimescale(): Promise<void> {
-    const { timescale, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies tremolo filter
-   * @param {FrequencyDepthOptions} options - Tremolo settings
-   */
-  public async setTremolo(options: FrequencyDepthOptions): Promise<void> {
-    return this.setFilters({ tremolo: options });
-  }
-
-  /**
-   * Removes tremolo filter
-   */
-  public async clearTremolo(): Promise<void> {
-    const { tremolo, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies vibrato filter
-   * @param {FrequencyDepthOptions} options - Vibrato settings
-   */
-  public async setVibrato(options: FrequencyDepthOptions): Promise<void> {
-    return this.setFilters({ vibrato: options });
-  }
-
-  /**
-   * Removes vibrato filter
-   */
-  public async clearVibrato(): Promise<void> {
-    const { vibrato, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies rotation filter
-   * @param {RotationOptions} options - Rotation settings
-   */
-  public async setRotation(options: RotationOptions): Promise<void> {
-    return this.setFilters({ rotation: options });
-  }
-
-  /**
-   * Removes rotation filter
-   */
-  public async clearRotation(): Promise<void> {
-    const { rotation, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies distortion filter
-   * @param {DistortionOptions} options - Distortion settings
-   */
-  public async setDistortion(options: DistortionOptions): Promise<void> {
-    return this.setFilters({ distortion: options });
-  }
-
-  /**
-   * Removes distortion filter
-   */
-  public async clearDistortion(): Promise<void> {
-    const { distortion, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies channel mix filter
-   * @param {ChannelMixOptions} options - Channel mix settings
-   */
-  public async setChannelMix(options: ChannelMixOptions): Promise<void> {
-    return this.setFilters({ channelMix: options });
-  }
-
-  /**
-   * Removes channel mix filter
-   */
-  public async clearChannelMix(): Promise<void> {
-    const { channelMix, ...filters } = this.filters;
-    return this.setFilters(filters);
-  }
-
-  /**
-   * Applies low pass filter
-   * @param {LowPassOptions} options - Low pass settings
-   */
-  public async setLowPass(options: LowPassOptions): Promise<void> {
-    return this.setFilters({ lowPass: options });
-  }
-
-  /**
-   * Removes low pass filter
-   */
-  public async clearLowPass(): Promise<void> {
-    const { lowPass, ...filters } = this.filters;
-    return this.setFilters(filters);
   }
 
   /**
@@ -372,7 +276,7 @@ export class Player extends EventEmitter {
       return this.handleTrackRepeat(current);
     }
     
-    const nextTrack = this.queue.next();
+    const nextTrack = this.queue.nextTrack();
     
     if (nextTrack) {
       await this.play({ track: nextTrack });
@@ -416,31 +320,55 @@ export class Player extends EventEmitter {
   }
 
   /**
+   * Updates the voice state (channelId, selfMute, selfDeaf)
+   * @param options Voice state options
+   */
+  public async updateVoice(options: { channelId?: string; selfMute?: boolean; selfDeaf?: boolean }): Promise<void> {
+    if (options.channelId) this.voiceChannelId = options.channelId;
+    if (typeof options.selfMute === 'boolean') this.mute = options.selfMute;
+    if (typeof options.selfDeaf === 'boolean') this.deaf = options.selfDeaf;
+    await this.node.connector.sendVoiceUpdate(this.guildId, this.voiceChannelId, this.mute, this.deaf);
+    this.emit('voiceStateUpdate', {
+      channelId: this.voiceChannelId,
+      selfMute: this.mute,
+      selfDeaf: this.deaf
+    });
+  }
+
+  /**
+   * Reconnects to the current voice channel
+   */
+  public async reconnect(): Promise<void> {
+    await this.connect();
+    this.emit('voiceStateUpdate', {
+      channelId: this.voiceChannelId,
+      selfMute: this.mute,
+      selfDeaf: this.deaf
+    });
+  }
+
+  /**
    * Disconnects from the voice channel
    */
   public async disconnect(): Promise<void> {
     await this.node.connector.sendVoiceUpdate(this.guildId, null);
-    this.emit(Events.VOICE_DISCONNECTED, this);
+    this.emit('voiceDisconnected', 'manual');
   }
 
-  /**
-   * Destroys the player and cleans up resources
-   */
   public async destroy(): Promise<void> {
     try {
       await this.disconnect();
     } catch (error) {
       // Ignore disconnect errors on destroy
     }
-
     try {
       await this.node.rest.request(this.playerEndpoint, 'DELETE');
     } catch (error) {
       // Ignore destroy errors
     }
-
     this.cleanup();
     this.node.players.delete(this.guildId);
+    this.emit('destroyed');
     this.emit(Events.PLAYER_DESTROY, this);
   }
 
@@ -463,17 +391,19 @@ export class Player extends EventEmitter {
   }
 
   /**
-   * Resets player state to default values
-   * @private
+   * Cleans up player resources
+   * @param options Cleanup options
    */
-  private cleanup(): void {
+  public async cleanup(options?: { removeListeners?: boolean; destroyQueue?: boolean }): Promise<void> {
     this.playing = false;
     this.paused = false;
     this.current = null;
-    this.queue.clear();
     this.timestamp = 0;
     this.position = 0;
     this.state = PlayerStates.IDLE;
+    if (options?.destroyQueue) this.queue.clear();
+    if (options?.removeListeners) this.removeAllListeners();
+    this.emit('debug', '[Player Debug]: cleanup called', options);
   }
 
   /**
@@ -502,7 +432,7 @@ export class Player extends EventEmitter {
       this.queue.add(this.queue.previous);
     }
     
-    const nextTrack = this.queue.next();
+    const nextTrack = this.queue.nextTrack();
     
     if (nextTrack) {
       await this.play({ track: nextTrack });
@@ -517,9 +447,21 @@ export class Player extends EventEmitter {
    * @param {any} data - Player update data
    */
   public update(data: any): void {
+    const oldState = { position: this.position, state: this.state };
     if (data.state) {
       this.position = data.state.position || 0;
       this.timestamp = Date.now();
+      if (data.state.status && data.state.status !== this.state) {
+        const prev = this.state;
+        this.state = data.state.status;
+        this.emit('stateUpdate', prev, this.state);
+      }
+    }
+    if (data.stats) {
+      this.stats.framesSent = data.stats.framesSent;
+      this.stats.framesNulled = data.stats.framesNulled;
+      this.stats.framesDeficit = data.stats.framesDeficit;
+      this.emit('stats', this.stats);
     }
   }
 
@@ -532,5 +474,32 @@ export class Player extends EventEmitter {
     
     const position = this.position + (this.playing ? Date.now() - this.timestamp : 0);
     return formatTime(position);
+  }
+
+  /**
+   * Gets the current loop mode ('none', 'track', 'queue')
+   */
+  public get loop(): 'none' | 'track' | 'queue' {
+    if (this.trackRepeat) return 'track';
+    if (this.queueRepeat) return 'queue';
+    return 'none';
+  }
+
+  /**
+   * Sets the loop mode ('none', 'track', 'queue')
+   * @param mode Loop mode
+   */
+  public setLoop(mode: 'none' | 'track' | 'queue'): void {
+    switch (mode) {
+      case 'track':
+        this.setTrackLoop(true);
+        break;
+      case 'queue':
+        this.setQueueLoop(true);
+        break;
+      default:
+        this.setTrackLoop(false);
+        this.setQueueLoop(false);
+    }
   }
 }

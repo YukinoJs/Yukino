@@ -73,11 +73,19 @@ export interface PlayerOptions {
   voiceChannelId: string;
   deaf?: boolean;
   mute?: boolean;
+  selfDeaf?: boolean; // For docs compatibility
+  selfMute?: boolean; // For docs compatibility
   volume?: number;
   queueOptions?: QueueOptions;
   node?: string;
   nodeGroup?: string;
   autoReconnect?: boolean;
+  options?: {
+    inactivityTimeout?: number;
+    volumeDecrementer?: number;
+    bufferingTimeout?: number;
+    [key: string]: any;
+  };
 }
 
 export interface QueueOptions {

@@ -53,9 +53,37 @@ export class Queue {
   }
 
   /**
-   * Get the next track in the queue
+   * Add multiple tracks to the queue
    */
-  public next(): Track | null {
+  public addMany(tracks: Track[]): void {
+    this.add(tracks);
+  }
+
+  /**
+   * Filter tracks in the queue by a predicate
+   */
+  public filter(predicate: (track: Track, index: number, array: Track[]) => boolean): Track[] {
+    return this.tracks.filter(predicate);
+  }
+
+  /**
+   * Alias for queue size (docs compatibility)
+   */
+  public get length(): number {
+    return this.size;
+  }
+
+  /**
+   * Gets the next track in the queue without removing it (docs compatibility)
+   */
+  public get next(): Track | null {
+    return this.tracks.length > 0 ? this.tracks[0] : null;
+  }
+
+  /**
+   * Get and remove the next track in the queue
+   */
+  public nextTrack(): Track | null {
     const track = this.tracks.shift() || null;
     if (this.current) {
       this.previous = this.current;

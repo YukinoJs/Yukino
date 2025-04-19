@@ -1,4 +1,4 @@
-import { EqualizerBand, FilterOptions, CustomFilter } from '../types/interfaces.ts';
+import { EqualizerBand, FilterOptions, CustomFilter, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces.ts';
 import { Events } from '../types/constants.ts';
 
 export class FilterUtil {
@@ -271,6 +271,69 @@ export class FilterUtil {
     }
     
     return filter;
+  }
+
+  /**
+   * Returns a FilterOptions object for karaoke
+   */
+  public static karaoke(options: KaraokeOptions): FilterOptions {
+    return { karaoke: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for timescale
+   */
+  public static timescale(options: TimescaleOptions): FilterOptions {
+    return { timescale: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for tremolo
+   */
+  public static tremolo(options: FrequencyDepthOptions): FilterOptions {
+    return { tremolo: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for vibrato
+   */
+  public static vibrato(options: FrequencyDepthOptions): FilterOptions {
+    return { vibrato: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for rotation
+   */
+  public static rotation(options: RotationOptions): FilterOptions {
+    return { rotation: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for distortion
+   */
+  public static distortion(options: DistortionOptions): FilterOptions {
+    return { distortion: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for channel mix
+   */
+  public static channelMix(options: ChannelMixOptions): FilterOptions {
+    return { channelMix: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for low pass
+   */
+  public static lowPass(options: LowPassOptions): FilterOptions {
+    return { lowPass: options };
+  }
+
+  /**
+   * Returns a FilterOptions object for equalizer
+   */
+  public static equalizer(bands: EqualizerBand[]): FilterOptions {
+    return { equalizer: bands };
   }
 }
 
