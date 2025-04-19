@@ -6,6 +6,7 @@ export enum Events {
   NODE_RECONNECT = 'nodeReconnect',
   NODE_STATS = 'nodeStats',
   NODE_EVENT = 'nodeEvent',
+  NODE_ADD = 'nodeAdd',
 
   // Player events
   PLAYER_CREATE = 'playerCreate',
@@ -57,4 +58,15 @@ export const LAVALINK_API_VERSION = 'v4';
 export enum Versions {
   WEBSOCKET_VERSION = "4",
   REST_VERSION = "4"
+}
+
+export const YUKINO_VERSION = '1.0.0';
+
+export enum SearchTypes {
+  YOUTUBE = 'ytsearch',
+  YOUTUBE_MUSIC = 'ytmsearch',
+  SOUNDCLOUD = 'scsearch',
+  SPOTIFY = 'spsearch',
+  APPLE_MUSIC = 'amsearch',
+  DEEZER = 'dzsearch'
 }

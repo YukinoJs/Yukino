@@ -13,6 +13,11 @@ export interface ConnectorOptions {
   version?: string;
   sessionId?: string;
   debug?: boolean;
+  restOptions?: RestOptions;
+  defaultSearchEngine?: string;
+  userAgent?: string;
+  reconnectInterval?: number;
+  reconnectTries?: number;
 }
 
 export interface DiscordJSConnectorOptions extends ConnectorOptions {}
@@ -29,6 +34,8 @@ export interface NodeOptions {
   resumeTimeout?: number;
   version?: string;
   debug?: boolean;
+  priority?: number;
+  region?: string;
 }
 
 export interface YukinoOptions {
@@ -53,6 +60,9 @@ export interface PlayerOptions {
   mute?: boolean;
   volume?: number;
   queueOptions?: QueueOptions;
+  node?: string;
+  nodeGroup?: string;
+  autoReconnect?: boolean;
 }
 
 export interface QueueOptions {
@@ -116,6 +126,8 @@ export interface RestOptions {
   timeout?: number;
   version?: string;
   debug?: boolean;
+  headers?: Record<string, string>;
+  retries?: number;
 }
 
 export interface NodeStats {
@@ -208,4 +220,27 @@ export interface CustomFilter {
   description?: string;
   filters: FilterOptions;
   tags?: string[];
+}
+
+export interface SearchOptions {
+  source?: string;
+  requester?: string;
+  context?: Record<string, any>;
+}
+
+export interface NodeGroup {
+  name: string;
+  nodes: Node[];
+}
+
+/**
+ * Aggregate statistics for all connected Lavalink nodes
+ * Extends NodeStats with an additional nodeStats property that contains
+ * individual stats for each node
+ */
+export interface LavalinkStats extends Omit<NodeStats, 'frameStats'> {
+  /**
+   * Individual stats for each node, keyed by node name
+   */
+  nodeStats: Record<string, NodeStats>;
 }
