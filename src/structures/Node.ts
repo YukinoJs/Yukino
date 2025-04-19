@@ -49,17 +49,26 @@ export class Node extends EventEmitter {
     this.group = options.group || "default";
     this.auth = options.auth;
     this._logger = Logger.create('Node', options.debug || false);
-    
+
+    // Support both legacy and documented reconnect options
+    const reconnectOptions = (options as any).reconnectOptions || {};
+    const retryAmount = (options as any).retryAmount ?? reconnectOptions.retryAmount ?? options.reconnectTries ?? 3;
+    const retryDelay = (options as any).retryDelay ?? reconnectOptions.retryDelay ?? options.reconnectInterval ?? 5000;
+
     this.options = {
-      secure: false,
+      name: this.name,
+      url: options.url,
+      auth: this.auth,
+      secure: options.secure ?? false,
       group: this.group,
-      reconnectInterval: 5000,
-      reconnectTries: 3,
-      resumeKey: null,
-      resumeTimeout: 60,
-      version: Versions.WEBSOCKET_VERSION,
-      debug: options.debug || false,
-      ...options,
+      reconnectInterval: retryDelay,
+      reconnectTries: retryAmount,
+      resumeKey: options.resumeKey ?? null,
+      resumeTimeout: options.resumeTimeout ?? 60,
+      version: options.version ?? Versions.WEBSOCKET_VERSION,
+      debug: options.debug ?? false,
+      priority: options.priority ?? 0,
+      region: options.region ?? ''
     };
 
     this.url = `${options.secure ? "wss" : "ws"}://${options.url}/v${
@@ -83,6 +92,21 @@ export class Node extends EventEmitter {
     this.players = new Map();
     
     this._logger.debug(`Node created: ${this.name}, URL: ${this.url}`);
+  }
+
+  /**
+   * Destroys the node and cleans up all resources (permanent disconnect)
+   */
+  public destroy(code = 1000, reason = "Node destroyed"): void {
+    this._logger.debug(`Destroying node: ${this.name}`);
+    this.disconnect(code, reason);
+    this.players.clear();
+    this.stats = null;
+    this.info = null;
+    this.sessionId = null;
+    // No State.DESTROYED, so set to DISCONNECTED and emit a destroyed event
+    this.state = State.DISCONNECTED;
+    this.emit('destroyed', this);
   }
 
   /**
@@ -566,8 +590,9 @@ export class Node extends EventEmitter {
    * @private
    */
   private onError(error: Error): void {
+    // Standardize error event emission
+    if (!(error as any).code) (error as any).code = 'NODE_ERROR';
     this.emit(Events.NODE_ERROR, this, error);
-
     if (this.reconnectAttempts < this.options.reconnectTries) {
       this.scheduleReconnect();
     }
@@ -596,14 +621,17 @@ export class Node extends EventEmitter {
   private scheduleReconnect(): void {
     this.reconnectAttempts++;
     this.state = State.RECONNECTING;
-    this.emit(Events.NODE_RECONNECT, this);
+    // Emit reconnecting event with attempt count
+    this.emit(Events.NODE_RECONNECT, this, this.reconnectAttempts);
 
     this.reconnectTimeout = setTimeout(async () => {
       try {
         await this.connect();
       } catch (error) {
-        this.emit(Events.NODE_ERROR, this, error);
-        
+        // Standardize error event emission
+        const err = error instanceof Error ? error : new Error(String(error));
+        (err as any).code = (err as any).code || 'RECONNECT_FAILED';
+        this.emit(Events.NODE_ERROR, this, err);
         if (this.reconnectAttempts < this.options.reconnectTries) {
           this.scheduleReconnect();
         } else {

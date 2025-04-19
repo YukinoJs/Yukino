@@ -30,6 +30,21 @@ export interface NodeOptions {
   group?: string;
   reconnectInterval?: number;
   reconnectTries?: number;
+  /**
+   * Number of reconnection attempts (alias for reconnectTries)
+   */
+  retryAmount?: number;
+  /**
+   * Delay between reconnection attempts in ms (alias for reconnectInterval)
+   */
+  retryDelay?: number;
+  /**
+   * Nested reconnect options (docs compatibility)
+   */
+  reconnectOptions?: {
+    retryAmount?: number;
+    retryDelay?: number;
+  };
   resumeKey?: string | null;
   resumeTimeout?: number;
   version?: string;
