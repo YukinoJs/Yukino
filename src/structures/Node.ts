@@ -63,6 +63,9 @@ export class Node extends EventEmitter {
       group: this.group,
       reconnectInterval: retryDelay,
       reconnectTries: retryAmount,
+      retryAmount: retryAmount,
+      retryDelay: retryDelay,
+      reconnectOptions: reconnectOptions,
       resumeKey: options.resumeKey ?? null,
       resumeTimeout: options.resumeTimeout ?? 60,
       version: options.version ?? Versions.WEBSOCKET_VERSION,
@@ -517,7 +520,7 @@ export class Node extends EventEmitter {
       }
 
       // Get next track
-      const nextTrack = player.queue.next();
+      const nextTrack = player.queue.next;
 
       if (nextTrack) {
         player.play({ track: nextTrack });
@@ -527,7 +530,7 @@ export class Node extends EventEmitter {
           player.queue.add(player.queue.previous);
         }
 
-        const loopTrack = player.queue.next();
+        const loopTrack = player.queue.next;
         if (loopTrack) {
           player.play({ track: loopTrack });
         }
