@@ -1,10 +1,10 @@
 // filepath: c:\Users\sanch\Documents\Code-Stuff\Crazy-Projects\Yukino\src\structures\PlayerManager.ts
 import { EventEmitter } from 'events';
-import { Player } from './Player.ts';
-import { NodeManager } from './NodeManager.ts';
-import { PlayerOptions } from '../types/interfaces.ts';
-import { Events } from '../types/constants.ts';
-import { Logger } from '../utils/Logger.ts';
+import { Player } from './Player.js';
+import { NodeManager } from './NodeManager.js';
+import { PlayerOptions } from '../types/interfaces.js';
+import { Events } from '../types/constants.js';
+import { Logger } from '../utils/Logger.js';
 
 /**
  * Manages players across all nodes and guilds

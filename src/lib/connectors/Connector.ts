@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
-import { Node } from '../../structures/Node.ts';
-import { LoadTrackResponse, NodeOptions, ConnectorOptions, RestOptions, SearchOptions } from '../../types/interfaces.ts';
-import { Events, LoadTypes, SearchTypes } from '../../types/constants.ts';
-import { Logger } from '../../utils/Logger.ts';
+import { Node } from '../../structures/Node.js';
+import { LoadTrackResponse, NodeOptions, ConnectorOptions, RestOptions, SearchOptions } from '../../types/interfaces.js';
+import { Events, LoadTypes, SearchTypes } from '../../types/constants.js';
+import { Logger } from '../../utils/Logger.js';
 
 /**
  * Voice state data containing session and channel information

@@ -1,6 +1,6 @@
 import { Client } from 'discord.js';
-import { Connector } from './Connector.ts';
-import { DiscordJSConnectorOptions } from '../../types/interfaces.ts';
+import { Connector } from './Connector.js';
+import { DiscordJSConnectorOptions } from '../../types/interfaces.js';
 
 /**
  * Discord.ts implementation of the Connector

@@ -1,4 +1,4 @@
-import { QueueOptions, Track } from '../types/interfaces.ts';
+import { QueueOptions, Track } from '../types/interfaces.js';
 
 export class Queue {
   public tracks: Track[];
