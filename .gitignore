@@ -9,6 +9,7 @@ yarn-error.log*
 *.tsbuildinfo
 
 # Output directories
+dist/
 build/
 lavalink/
 examples/
