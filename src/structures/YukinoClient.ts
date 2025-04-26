@@ -1,20 +1,20 @@
 import { Client } from 'discord.js';
-import { Connector } from '../lib/connectors/Connector.ts';
-import { DiscordJSConnector } from '../lib/connectors/DiscordJSConnector.ts';
-import { NodeManager } from './NodeManager.ts';
-import { PlayerManager } from './PlayerManager.ts';
-import { Node } from './Node.ts';
-import { Player } from './Player.ts';
-import { Queue } from './Queue.ts';
+import { Connector } from '../lib/connectors/Connector.js';
+import { DiscordJSConnector } from '../lib/connectors/DiscordJSConnector.js';
+import { NodeManager } from './NodeManager.js';
+import { PlayerManager } from './PlayerManager.js';
+import { Node } from './Node.js';
+import { Player } from './Player.js';
+import { Queue } from './Queue.js';
 import { 
   ConnectorOptions, 
   NodeOptions, 
   PlayerOptions,
   SearchOptions, 
   LavalinkStats
-} from '../types/interfaces.ts';
-import { Events, SearchTypes, YUKINO_VERSION } from '../types/constants.ts';
-import { Logger } from '../utils/Logger.ts';
+} from '../types/interfaces.js';
+import { Events, SearchTypes, YUKINO_VERSION } from '../types/constants.js';
+import { Logger } from '../utils/Logger.js';
 
 export class YukinoClient {
   public connector: Connector;

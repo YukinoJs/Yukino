@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
-import { Node } from './Node.ts';
-import { Queue } from './Queue.ts';
-import { PlayerOptions, PlayOptions, Track, FilterOptions } from '../types/interfaces.ts';
-import { Events, PlayerStates } from '../types/constants.ts';
-import { formatTime } from '../utils/Utils.ts';
-import { Logger } from '../utils/Logger.ts';
+import { Node } from './Node.js';
+import { Queue } from './Queue.js';
+import { PlayerOptions, PlayOptions, Track, FilterOptions } from '../types/interfaces.js';
+import { Events, PlayerStates } from '../types/constants.js';
+import { formatTime } from '../utils/Utils.js';
+import { Logger } from '../utils/Logger.js';
 
 /**
  * Represents a player instance for a guild

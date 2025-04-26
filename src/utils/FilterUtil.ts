@@ -1,5 +1,5 @@
-import { EqualizerBand, FilterOptions, CustomFilter, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces.ts';
-import { Events } from '../types/constants.ts';
+import { EqualizerBand, FilterOptions, CustomFilter, KaraokeOptions, TimescaleOptions, FrequencyDepthOptions, RotationOptions, DistortionOptions, ChannelMixOptions, LowPassOptions } from '../types/interfaces.js';
+import { Events } from '../types/constants.js';
 
 export class FilterUtil {
   /**

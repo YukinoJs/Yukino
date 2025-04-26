@@ -1,19 +1,19 @@
 // Export all components
-export { Connector } from './lib/connectors/Connector.ts';
-export { DiscordJSConnector } from './lib/connectors/DiscordJSConnector.ts';
-export { Node } from './structures/Node.ts';
-export { Player } from './structures/Player.ts';
-export { Queue } from './structures/Queue.ts';
-export { Rest } from './structures/Rest.ts';
-export { YukinoClient } from './structures/YukinoClient.ts';
+export { Connector } from './lib/connectors/Connector.js';
+export { DiscordJSConnector } from './lib/connectors/DiscordJSConnector.js';
+export { Node } from './structures/Node.js';
+export { Player } from './structures/Player.js';
+export { Queue } from './structures/Queue.js';
+export { Rest } from './structures/Rest.js';
+export { YukinoClient } from './structures/YukinoClient.js';
 
 // Export constants
-export { Events, LoadTypes, State, PlayerStates } from './types/constants.ts';
+export { Events, LoadTypes, State, PlayerStates } from './types/constants.js';
 
 // Export utilities
-export * from './utils/Utils.ts';
-export * from './utils/FilterUtil.ts';
-export { Logger } from './utils/Logger.ts';
+export * from './utils/Utils.js';
+export * from './utils/FilterUtil.js';
+export { Logger } from './utils/Logger.js';
 
 // Export types
-export * from './types/interfaces.ts';
+export * from './types/interfaces.js';

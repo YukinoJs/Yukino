@@ -1,9 +1,9 @@
 // filepath: c:\Users\sanch\Documents\Code-Stuff\Crazy-Projects\Yukino\src\structures\NodeManager.ts
 import { EventEmitter } from 'events';
-import { Node } from './Node.ts';
-import { NodeOptions, NodeGroup } from '../types/interfaces.ts';
-import { Events, YUKINO_VERSION } from '../types/constants.ts';
-import { Logger } from '../utils/Logger.ts';
+import { Node } from './Node.js';
+import { NodeOptions, NodeGroup } from '../types/interfaces.js';
+import { Events, YUKINO_VERSION } from '../types/constants.js';
+import { Logger } from '../utils/Logger.js';
 
 /**
  * Manages multiple Lavalink nodes and provides load balancing
