@@ -1,14 +1,14 @@
 {
   "name": "yukinojs",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Kawaii lavalink client written in TypeScript",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/YukinoJs/yukino.git"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
