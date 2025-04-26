@@ -1,5 +1,5 @@
 {
-  "name": "@yukinojs/yukinojs",
+  "name": "yukinojs",
   "version": "1.2.0",
   "description": "Kawaii lavalink client written in TypeScript",
   "type": "module",
